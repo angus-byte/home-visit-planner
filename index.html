@@ -801,7 +801,7 @@ function ckSave(o){ try{ localStorage.setItem(CK_STORE, JSON.stringify(o)); }cat
 function ckMsg(html,bad){ const b=$("#ckMsg"); b.className="banner "+(bad?"bad":"info"); b.innerHTML=html; b.hidden=false; }
 function ckProg(f){ const p=$("#ckProg"); if(f==null){ p.hidden=true; return; } p.hidden=false; p.firstElementChild.style.width=Math.round(f*100)+"%"; }
 $("#btnCliniko").addEventListener("click", ()=>{
-  const c=ckLoad(); $("#ckKey").value=c.key||""; $("#ckRemember").checked=!!c.key; $("#ckProxy").value=c.proxy||"";
+  const c=ckLoad(); $("#ckKey").value=c.key||""; $("#ckRemember").checked=!!c.key; $("#ckProxy").value=c.proxy||"https://cliniko-proxy.angus-ca0.workers.dev";
   $("#ckMsg").hidden=true; ckProg(null); $("#dlgCliniko").showModal();
 });
 $("#ckCancel").addEventListener("click", ()=>$("#dlgCliniko").close());
