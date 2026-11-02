@@ -58,6 +58,16 @@ section.view{display:grid;gap:20px}
 .btn:active{transform:translateY(1px) scale(.98);box-shadow:inset 0 1px 2px rgba(15,31,38,.1);background:var(--soft-2)}
 .btn.primary{background:var(--accent);border-color:var(--accent-press);color:var(--accent-ink);box-shadow:0 1px 2px rgba(6,95,103,.25), 0 4px 12px rgba(10,124,134,.18), inset 0 1px 0 rgba(255,255,255,.15)}
 .btn.primary:hover{background:var(--accent-hover);box-shadow:0 2px 4px rgba(6,95,103,.25), 0 8px 18px rgba(10,124,134,.22), inset 0 1px 0 rgba(255,255,255,.15)}
+.btn.green{background:var(--good);border-color:#0f5c37;color:#fff;box-shadow:0 1px 2px rgba(15,92,55,.25), 0 4px 12px rgba(22,121,74,.18), inset 0 1px 0 rgba(255,255,255,.15)}
+.btn.green:hover{background:#13693f}
+.btn.green:active{background:#0f5c37;box-shadow:inset 0 2px 4px rgba(0,0,0,.18)}
+.more{position:relative}
+.more>summary{list-style:none}
+.more>summary::-webkit-details-marker{display:none}
+.more>summary::after{content:"";width:8px;height:8px;border:solid currentColor;border-width:0 2px 2px 0;transform:translateY(-2px) rotate(45deg);margin-left:2px}
+.more[open]>summary::after{transform:translateY(2px) rotate(-135deg)}
+.more .menu{position:absolute;right:0;top:calc(100% + 6px);z-index:20;background:#fff;border:1px solid var(--line-strong);border-radius:var(--r-sm);box-shadow:0 12px 32px rgba(15,31,38,.16);padding:6px;display:grid;gap:4px;min-width:200px}
+.more .menu .btn{border:0;box-shadow:none;justify-content:flex-start;width:100%}
 .btn.primary:active{background:var(--accent-press);box-shadow:inset 0 2px 4px rgba(0,0,0,.18)}
 .btn.big{padding:14px 26px;min-height:52px;font-size:1.05rem;border-radius:12px}
 .btn.danger{color:var(--bad)}
@@ -173,9 +183,14 @@ details.card summary{cursor:pointer;font-weight:600}
       <p class="muted" style="margin:4px 0 0">Import once, then tick who you're seeing each week.</p>
     </div>
     <div class="row noprint">
-      <button class="btn primary" id="btnImport">Import CSV or Excel</button>
-      <button class="btn" id="btnCliniko">Import from Cliniko</button>
-      <button class="btn" id="btnAdd">Add client</button>
+      <button class="btn green" id="btnCliniko">Import from Cliniko</button>
+      <details class="more" id="moreAdd">
+        <summary class="btn">More</summary>
+        <div class="menu">
+          <button class="btn" id="btnImport">Import CSV or Excel</button>
+          <button class="btn" id="btnAdd">Add client</button>
+        </div>
+      </details>
     </div>
   </div>
   <input type="file" id="fileImport" accept=".csv,.xlsx,.xls,.txt" hidden>
@@ -725,6 +740,8 @@ $("#clientForm").addEventListener("submit", e=>{
 });
 
 /* ---------- Import ---------- */
+$$("#moreAdd .menu .btn").forEach(b=>b.addEventListener("click", ()=>$("#moreAdd").open=false));
+document.addEventListener("click", e=>{ const m=$("#moreAdd"); if(m.open && !m.contains(e.target)) m.open=false; });
 $("#btnImport").addEventListener("click", ()=>$("#fileImport").click());
 $("#fileImport").addEventListener("change", async e=>{
   const f=e.target.files[0]; e.target.value=""; if(!f) return;
