@@ -79,7 +79,7 @@ section.view{display:grid;gap:20px}
 .btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
 :focus-visible{outline:3px solid rgba(56,94,147,.45);outline-offset:2px}
 label.f{display:grid;gap:6px;font-size:.85rem;font-weight:600;color:var(--muted)}
-input[type=text],input[type=tel],input[type=number],input[type=time],input[type=date],input[type=search],input[type=password],input[type=url],textarea,select{font:inherit;font-size:1rem;color:var(--ink);background:#fff;border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:10px 12px;min-height:44px;min-width:0;width:100%;transition:border-color .15s, box-shadow .15s}
+input[type=text],input[type=tel],input[type=number],input[type=time],input[type=date],input[type=search],input[type=password],input[type=email],input[type=url],textarea,select{font:inherit;font-size:1rem;color:var(--ink);background:#fff;border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:10px 12px;min-height:44px;min-width:0;width:100%;transition:border-color .15s, box-shadow .15s}
 input:hover,textarea:hover,select:hover{border-color:#b6c2c6}
 input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
 input[type=checkbox]{accent-color:var(--accent);width:18px;height:18px;cursor:pointer}
@@ -153,8 +153,19 @@ dialog form{padding:24px;display:grid;gap:14px}
 .privacy{font-size:.85rem;color:var(--muted);display:flex;gap:8px;align-items:flex-start;max-width:70ch}
 .privacy::before{content:"";flex:none;width:16px;height:16px;margin-top:2px;background:var(--good);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1l6 2.5v4c0 3.6-2.5 6.5-6 7.5-3.5-1-6-3.9-6-7.5v-4z'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1l6 2.5v4c0 3.6-2.5 6.5-6 7.5-3.5-1-6-3.9-6-7.5v-4z'/%3E%3C/svg%3E") center/contain no-repeat}
 details.card summary{cursor:pointer;font-weight:600}
+.weektabs{display:flex;gap:6px;flex-wrap:wrap}
+.weektabs .chipbtn small{font-weight:500;opacity:.75}
+.weektabs .chipbtn .dot{width:7px;height:7px;border-radius:50%;background:var(--good)}
+.weektabs .chipbtn .dot.stale{background:var(--warn)}
+.weeksum{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.weeksum .card{display:grid;gap:6px;padding:16px}
+.msg{display:grid;grid-template-columns:1fr auto;gap:6px 14px;padding:14px 0;border-top:1px solid var(--line);align-items:start}
+.msg:first-child{border-top:0}
+.msg details{grid-column:1/-1}
+.msg pre{margin:6px 0 0;white-space:pre-wrap;font:inherit;font-size:.9rem;background:var(--soft);border-radius:var(--r-sm);padding:10px 12px}
+.msg ul{margin:4px 0 0;padding-left:18px}
 .hide-sm{}
-@media (max-width:640px){ .hide-sm{display:none} nav.steps{width:100%} nav.steps button{flex:1;padding:8px 6px} .wrap{padding-block:20px 56px} .card{padding:16px} th,td{padding:10px} }
+@media (max-width:640px){ .msg{grid-template-columns:1fr} .msg .row{justify-content:flex-start!important} .hide-sm{display:none} nav.steps{width:100%} nav.steps button{flex:1;padding:8px 6px} .wrap{padding-block:20px 56px} .card{padding:16px} th,td{padding:10px} }
 @media print{ header.top,.noprint,#map{display:none!important} .day{break-inside:avoid;border-color:#999;box-shadow:none} .days{grid-template-columns:1fr 1fr} }
 /* Practice theme */
 h1,h2,h3{color:var(--accent);letter-spacing:0}
@@ -178,8 +189,9 @@ nav.steps button{border-radius:999px}
     </div>
     <nav class="steps" aria-label="Steps">
       <button data-go="clients"><span class="n">1</span>Clients</button>
-      <button data-go="week"><span class="n">2</span>This week</button>
+      <button data-go="week"><span class="n">2</span>Plan weeks</button>
       <button data-go="schedule"><span class="n">3</span>Schedule</button>
+      <button data-go="month"><span class="n">4</span>Month</button>
     </nav>
   </div>
 </header>
@@ -210,6 +222,7 @@ nav.steps button{border-radius:999px}
     <button class="btn" id="btnClearExamples">Remove examples</button>
   </div>
   <div id="importMsg" class="banner info" hidden></div>
+  <div class="weektabs noprint" role="tablist" aria-label="Weeks"></div>
   <div class="row">
     <input type="search" id="search" placeholder="Search name, suburb or notes" style="flex:1;min-width:200px" aria-label="Search clients">
     <span class="muted small" id="clientCount"></span>
@@ -226,7 +239,7 @@ nav.steps button{border-radius:999px}
     <ul>
       <li><b>Name</b> (or First name + Last name)</li>
       <li><b>Address</b> (Suburb and Postcode columns are added on if separate)</li>
-      <li><b>Phone</b>, <b>Parent/Guardian</b>, <b>Notes</b> (optional)</li>
+      <li><b>Phone</b>, <b>Email</b>, <b>Parent/Guardian</b>, <b>Notes</b> (optional)</li>
       <li><b>Visit length</b> in minutes, e.g. 45 (defaults to 60)</li>
       <li><b>Days</b> the family is available, e.g. "Mon, Wed" (blank = any day)</li>
     </ul>
@@ -238,9 +251,10 @@ nav.steps button{border-radius:999px}
 
 <!-- WEEK -->
 <section class="view" id="v-week" hidden>
+  <div class="weektabs noprint" role="tablist" aria-label="Weeks"></div>
   <div>
-    <h1>Plan this week</h1>
-    <p class="muted" style="margin:4px 0 0">Set your working days and pick who you're seeing.</p>
+    <h1 id="weekTitle">Plan week 1</h1>
+    <p class="muted" style="margin:4px 0 0">Each week can have its own working days, hours and clients.</p>
   </div>
   <div class="card" style="display:grid;gap:14px">
     <div class="grid2">
@@ -265,7 +279,7 @@ nav.steps button{border-radius:999px}
   <div class="card" style="display:grid;gap:10px">
     <div class="row spread">
       <h2 style="font-size:1.2rem">Visits this week <span class="muted" id="selCount"></span></h2>
-      <div class="row"><button class="btn link" id="btnSelNone">Clear</button><button class="btn link" data-go="clients">Change in client list</button></div>
+      <div class="row"><button class="btn link" id="btnSelPrev" hidden>Same clients as last week</button><button class="btn link" id="btnSelNone">Clear</button><button class="btn link" data-go="clients">Change in client list</button></div>
     </div>
     <div id="selList" class="small"></div>
   </div>
@@ -281,6 +295,7 @@ nav.steps button{border-radius:999px}
 
 <!-- SCHEDULE -->
 <section class="view" id="v-schedule" hidden>
+  <div class="weektabs noprint" role="tablist" aria-label="Weeks"></div>
   <div class="row spread">
     <div>
       <h1 id="schedTitle">Weekly schedule</h1>
@@ -295,7 +310,7 @@ nav.steps button{border-radius:999px}
   <div id="schedNotice"></div>
   <div id="schedEmpty" class="card" hidden>
     <p style="margin:0">No schedule yet. Pick this week's clients, then build the schedule.</p>
-    <p><button class="btn primary" data-go="week">Plan this week</button></p>
+    <p><button class="btn primary" data-go="week">Plan this week</button> <button class="btn" data-go="month">See the whole month</button></p>
   </div>
   <div id="schedBody">
     <div class="stats card" id="stats"></div>
@@ -304,6 +319,41 @@ nav.steps button{border-radius:999px}
       <div id="map"></div>
     </div>
     <div class="days" id="days"></div>
+  </div>
+</section>
+
+<!-- MONTH -->
+<section class="view" id="v-month" hidden>
+  <div class="row spread">
+    <div>
+      <h1>Month ahead</h1>
+      <p class="muted" style="margin:4px 0 0" id="monthSub"></p>
+    </div>
+    <div class="row noprint">
+      <button class="btn primary" id="btnBuildAll">Build all weeks</button>
+      <button class="btn" id="btnMonthCsv">Download CSV</button>
+    </div>
+  </div>
+  <div id="monthProgress" hidden class="card" style="display:grid;gap:8px">
+    <div id="monthStatus">Working…</div>
+    <div class="progress"><i id="monthBar"></i></div>
+  </div>
+  <div class="weeksum" id="weekSum"></div>
+  <div class="card" style="display:grid;gap:12px">
+    <div class="row spread">
+      <h2 style="font-size:1.2rem">Let clients know <span class="muted" id="msgCount"></span></h2>
+      <button class="btn" id="btnCopyAll">Copy all messages</button>
+    </div>
+    <details class="small">
+      <summary style="cursor:pointer;font-weight:600">Edit message wording</summary>
+      <div style="display:grid;gap:8px;margin-top:10px">
+        <label class="f">Email subject<input type="text" id="msgSubj"></label>
+        <label class="f">Message<textarea id="msgTpl" rows="7"></textarea></label>
+        <p class="muted" style="margin:0">{first} is the client's first name, {name} the full name, {visits} the list of visit dates and times, {dates} just the dates. Times are rounded to the nearest 15 minutes.</p>
+        <div class="row"><label class="f" style="grid-template-columns:auto auto;align-items:center">Arrival time<select id="msgWindow"><option value="0">Exact time ("at about")</option><option value="30">30-minute window</option><option value="60">1-hour window</option><option value="120">2-hour window</option></select></label><button class="btn link" id="btnTplReset">Reset wording</button></div>
+      </div>
+    </details>
+    <div id="msgList"></div>
   </div>
 </section>
 </main>
@@ -315,6 +365,7 @@ nav.steps button{border-radius:999px}
     <label class="f">Address<input type="text" id="cAddr" required placeholder="Street, suburb, postcode"></label>
     <div class="grid2">
       <label class="f">Phone<input type="tel" id="cPhone"></label>
+      <label class="f">Email<input type="email" id="cEmail"></label>
       <label class="f">Parent / guardian<input type="text" id="cParent"></label>
       <label class="f">Visit length (min)<input type="number" id="cLen" min="10" max="240" step="5" value="60"></label>
       <label class="f">Available days<input type="text" id="cDays" placeholder="Any day, or e.g. Mon, Wed"></label>
@@ -334,13 +385,14 @@ nav.steps button{border-radius:999px}
 <dialog id="dlgCliniko">
   <form method="dialog" id="clinikoForm">
     <h2 style="font-size:1.25rem">Import from Cliniko</h2>
-    <p class="muted small" style="margin:0">Pulls patient names, addresses and phone numbers straight from Cliniko. Clinical notes are never fetched. Your API key is used only for this import and isn't saved unless you tick the box.</p>
+    <p class="muted small" style="margin:0">Pulls patient names, addresses, phone numbers and emails straight from Cliniko. Clinical notes are never fetched. Your API key is used only for this import and isn't saved unless you tick the box.</p>
     <label class="f">Cliniko API key<input type="password" id="ckKey" autocomplete="off" required placeholder="From Cliniko: My info, Manage API keys"></label>
     <label class="row small"><input type="checkbox" id="ckRemember"> Remember the key on this device</label>
     <label class="f">Connection link<input type="url" id="ckProxy" required placeholder="https://cliniko-proxy.yourname.workers.dev"></label>
     <label class="f">Which patients?
       <select id="ckMode">
-        <option value="week">Patients with appointments in the planning week (and tick them)</option>
+        <option value="month">Patients with appointments in the next 4 planning weeks (ticked in the right week)</option>
+        <option value="week">Patients with appointments in the current planning week only</option>
         <option value="all">All active patients</option>
       </select>
     </label>
@@ -668,7 +720,50 @@ try { S = JSON.parse(localStorage.getItem(STORE)) || defaults(); } catch(e){ S =
 S.settings = Object.assign(defaults().settings, S.settings||{});
 (()=>{ const ex=new Map(EXAMPLES.map(e=>[e[0],e])); S.clients.forEach(c=>{ const e=c.example&&ex.get(c.name); if(e){ c.lat=e[2]; c.lng=e[3]; c.geo="ok"; } }); })();
 if(S.schedule && S.schedule.lineFormat!=="lnglat") S.schedule=null;   // rebuild schedules made before real road routes
-function save(){ try { localStorage.setItem(STORE, JSON.stringify(S)); } catch(e){} }
+/* ---------- Month plan: several weeks, each with its own days, hours, clients and schedule ----------
+   The rest of the app works on "the current week" through S.settings.weekStart/days/start/end,
+   c.selected and S.schedule. Switching weeks stashes those into S.weeks[S.wk] and loads the next. */
+const WEEKS = 4;
+const addDays = (iso,n) => { const d=new Date(iso+"T00:00:00"); d.setDate(d.getDate()+n); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+if(!Array.isArray(S.weeks) || !S.weeks.length){
+  const st=S.settings;
+  S.weeks=[...Array(WEEKS)].map((_,i)=>({start:addDays(st.weekStart,7*i), days:{...st.days}, start_t:st.start, end_t:st.end,
+    sel: i? [] : S.clients.filter(c=>c.selected).map(c=>c.id), schedule: i? null : S.schedule}));
+  S.wk=0;
+}
+while(S.weeks.length<WEEKS){ const l=S.weeks[S.weeks.length-1]; S.weeks.push({start:addDays(l.start,7), days:{...l.days}, start_t:l.start_t, end_t:l.end_t, sel:[], schedule:null}); }
+S.wk=Math.min(Math.max(0,S.wk|0),S.weeks.length-1);
+S.schedule=S.weeks[S.wk].schedule||null;   // the current week's schedule lives in S.weeks (not saved twice)
+function clearPlans(){ S.schedule=null; (S.weeks||[]).forEach(w=>{ w.schedule=null; w.sel=w.sel.filter(id=>S.clients.some(c=>c.id===id)); }); }
+function stashWeek(){
+  const w=S.weeks&&S.weeks[S.wk]; if(!w) return; const st=S.settings;
+  w.start=st.weekStart; w.days={...st.days}; w.start_t=st.start; w.end_t=st.end;
+  w.sel=S.clients.filter(c=>c.selected).map(c=>c.id); w.schedule=S.schedule;
+}
+function loadWeek(i){
+  stashWeek(); S.wk=i; const w=S.weeks[i], st=S.settings;
+  st.weekStart=w.start; st.days={...w.days}; st.start=w.start_t||st.start; st.end=w.end_t||st.end;
+  const sel=new Set(w.sel); S.clients.forEach(c=>c.selected=sel.has(c.id)); S.schedule=w.schedule||null;
+  save();
+}
+// Keep the weeks back to back: moving one week's start date moves the others with it.
+function shiftWeeks(newStart){
+  const delta=Math.round((new Date(newStart+"T00:00:00")-new Date(S.weeks[S.wk].start+"T00:00:00"))/864e5);
+  if(!delta) return;
+  S.weeks.forEach((w,i)=>{ w.start=addDays(w.start,delta); const sch=i===S.wk?S.schedule:w.schedule; if(sch) sch.days.forEach(d=>d.date=addDays(d.date,delta)); });
+}
+const weekLabel = (w,opt={day:"numeric",month:"short"}) => new Date(w.start+"T00:00:00").toLocaleDateString("en-AU",opt);
+// A built week is out of date when its client list has changed since it was built.
+function weekStale(w){ const sch=w.schedule; if(!sch||!sch.selIds) return false; const a=[...sch.selIds].sort().join(), b=[...w.sel].sort().join(); return a!==b; }
+function renderWeekTabs(){
+  stashWeek();
+  const html=S.weeks.map((w,i)=>`<button class="chipbtn" role="tab" data-wk="${i}" aria-pressed="${i===S.wk}" aria-selected="${i===S.wk}">Week ${i+1} <small>${esc(weekLabel(w))}</small>${w.schedule?`<span class="dot${weekStale(w)?" stale":""}" title="${weekStale(w)?"Clients changed since built":"Built"}"></span>`:""}</button>`).join("");
+  $$(".weektabs").forEach(el=>el.innerHTML=html);
+}
+document.addEventListener("click", e=>{ const b=e.target.closest("[data-wk]"); if(!b) return; loadWeek(+b.dataset.wk);
+  const v=($("section.view:not([hidden])")||{}).id||"v-week"; go(v.slice(2)); });
+
+function save(){ stashWeek(); try { localStorage.setItem(STORE, JSON.stringify({...S, schedule:undefined})); } catch(e){} }
 
 /* ---------- Navigation ---------- */
 function go(view){
@@ -677,6 +772,8 @@ function go(view){
   if(view==="clients") renderClients();
   if(view==="week") renderWeek();
   if(view==="schedule") renderSchedule();
+  if(view==="month") renderMonth();
+  if(view!=="month") renderWeekTabs();
   try{ history.replaceState(null,"","#"+view); }catch(e){}
   window.scrollTo(0,0);
 }
@@ -706,7 +803,7 @@ function renderClients(){
   const q = $("#search").value.trim().toLowerCase();
   const list = S.clients.filter(c=>!q || [c.name,c.address,c.notes,c.parent].join(" ").toLowerCase().includes(q));
   $("#exampleBanner").hidden = !S.clients.some(c=>c.example);
-  $("#clientCount").textContent = `${S.clients.length} clients · ${S.clients.filter(c=>c.selected).length} ticked for this week`;
+  $("#clientCount").textContent = `${S.clients.length} clients · ${S.clients.filter(c=>c.selected).length} ticked for week ${S.wk+1} (${esc(weekLabel(S.weeks[S.wk]))})`;
   $("#clientRows").innerHTML = list.length ? list.map(c=>`
     <tr>
       <td><input type="checkbox" data-sel="${c.id}" ${c.selected?"checked":""} aria-label="See ${esc(c.name)} this week"></td>
@@ -722,7 +819,7 @@ function renderClients(){
 $("#search").addEventListener("input", renderClients);
 $("#clientRows").addEventListener("change", e=>{ const id=e.target.dataset.sel; if(!id) return; const c=S.clients.find(x=>x.id===id); c.selected=e.target.checked; save(); renderClients(); });
 $("#selAll").addEventListener("change", e=>{ const q=$("#search").value.trim().toLowerCase(); S.clients.forEach(c=>{ if(!q || [c.name,c.address,c.notes].join(" ").toLowerCase().includes(q)) c.selected=e.target.checked; }); save(); renderClients(); });
-$("#btnClearExamples").addEventListener("click", ()=>{ S.clients=S.clients.filter(c=>!c.example); S.schedule=null; save(); renderClients(); });
+$("#btnClearExamples").addEventListener("click", ()=>{ S.clients=S.clients.filter(c=>!c.example); clearPlans(); save(); renderClients(); });
 $("#clientRows").addEventListener("click", e=>{ const id=e.target.dataset.edit; if(id) openDlg(S.clients.find(c=>c.id===id)); });
 $("#btnAdd").addEventListener("click", ()=>openDlg(null));
 
@@ -731,7 +828,7 @@ let editing=null;
 function openDlg(c){
   editing=c;
   $("#dlgTitle").textContent = c? "Edit client":"Add client";
-  $("#cName").value=c?.name||""; $("#cAddr").value=c?.address||""; $("#cPhone").value=c?.phone||"";
+  $("#cName").value=c?.name||""; $("#cAddr").value=c?.address||""; $("#cPhone").value=c?.phone||""; $("#cEmail").value=c?.email||"";
   $("#cParent").value=c?.parent||""; $("#cLen").value=c?.visitMin||60; $("#cDays").value=c?.days?.join(", ")||""; $("#cNotes").value=c?.notes||"";
   $("#cDelete").hidden=!c; $("#delConfirm").hidden=true;
   $("#dlg").showModal();
@@ -745,7 +842,7 @@ $("#clientForm").addEventListener("submit", e=>{
   if(!addr||!name) return;
   const c = editing || {id:uid(), selected:true, geo:"pending"};
   if(c.address!==addr){ c.geo="pending"; c.lat=c.lng=null; }
-  Object.assign(c,{name,address:addr,phone:$("#cPhone").value.trim(),parent:$("#cParent").value.trim(),visitMin:Math.max(10,+$("#cLen").value||60),days:parseDays($("#cDays").value),notes:$("#cNotes").value.trim(),example:false});
+  Object.assign(c,{name,address:addr,phone:$("#cPhone").value.trim(),email:$("#cEmail").value.trim(),parent:$("#cParent").value.trim(),visitMin:Math.max(10,+$("#cLen").value||60),days:parseDays($("#cDays").value),notes:$("#cNotes").value.trim(),example:false});
   if(!editing) S.clients.push(c);
   save(); $("#dlg").close(); renderClients();
 });
@@ -787,7 +884,7 @@ function mapHeaders(h){
     parent: find("parent","guardian","mother","father","carer"),
     address: find("address","street"), suburb: find("suburb","city","town"), postcode: find("postcode","post code","zip"),
     address2: H.findIndex(x=>/address.*\b2\b|address line 2/.test(x)), address3: H.findIndex(x=>/address.*\b3\b|address line 3/.test(x)), state: H.findIndex(x=>/^state$/.test(x)),
-    phone: find("phone","mobile","contact number","tel"), notes: find("note","comment"),
+    phone: find("phone","mobile","contact number","tel"), email: find("email","e-mail"), notes: find("note","comment"),
     len: find("length","duration","minutes","mins"), days: find("days","available","availability","day")
   };
   m.name = H.findIndex((x,i)=>i!==m.parent && /(^|\s)(name|patient|client|child)/.test(x) && i!==m.first && i!==m.last && !/first|last|parent|guardian/.test(x));
@@ -801,7 +898,7 @@ function importRows(rows){
   const get=(r,i)=> i>=0 ? String(r[i]??"").trim() : "";
   let added=0, updated=0, skipped=0;
   const hadExamples = S.clients.some(c=>c.example);
-  if(hadExamples){ S.clients=S.clients.filter(c=>!c.example); S.schedule=null; }
+  if(hadExamples){ S.clients=S.clients.filter(c=>!c.example); clearPlans(); }
   for(const r of rows.slice(1)){
     const name = m.name>=0 ? get(r,m.name) : [get(r,m.first),get(r,m.last)].filter(Boolean).join(" ");
     let address=[get(r,m.address),get(r,m.address2),get(r,m.address3)].filter(Boolean).join(", "); const sub=get(r,m.suburb), pc=get(r,m.postcode), stt=get(r,m.state);
@@ -810,13 +907,13 @@ function importRows(rows){
     if(pc && !address.includes(pc)) address += " "+pc;
     if(!name || !address){ skipped++; continue; }
     const len=parseInt(get(r,m.len),10);
-    const rec={name,address,phone:get(r,m.phone),parent:get(r,m.parent),notes:get(r,m.notes),visitMin: len>=10? len:60, days:parseDays(get(r,m.days)), example:false};
+    const rec={name,address,phone:get(r,m.phone),email:get(r,m.email),parent:get(r,m.parent),notes:get(r,m.notes),visitMin: len>=10? len:60, days:parseDays(get(r,m.days)), example:false};
     const ex=S.clients.find(c=>c.name.toLowerCase()===name.toLowerCase());
     if(ex){ if(ex.address!==address){ ex.geo="pending"; ex.lat=ex.lng=null; } Object.assign(ex,rec); updated++; }
     else { S.clients.push({id:uid(),selected:false,geo:"pending",...rec}); added++; }
   }
   save(); renderClients();
-  showImport(`Imported <b>${added}</b> new client${added===1?"":"s"}${updated?`, updated ${updated}`:""}${skipped?`, skipped ${skipped} row${skipped===1?"":"s"} with no name or address`:""}.${hadExamples?" Example clients removed.":""} Tick who you're seeing this week, then go to <b>This week</b>.`);
+  showImport(`Imported <b>${added}</b> new client${added===1?"":"s"}${updated?`, updated ${updated}`:""}${skipped?`, skipped ${skipped} row${skipped===1?"":"s"} with no name or address`:""}.${hadExamples?" Example clients removed.":""} Tick who you're seeing this week, then go to <b>Plan weeks</b>.`);
 }
 /* ---------- Cliniko import ----------
    Cliniko's API can't be called from a browser (no CORS, and it needs a User-Agent
@@ -860,7 +957,7 @@ function ckRecord(p){
   const address=[p.address_1,p.address_2,p.address_3,p.city,[p.state,p.post_code].filter(Boolean).join(" ")].map(x=>(x||"").trim()).filter(Boolean).join(", ");
   const phones=p.patient_phone_numbers||[];
   const ph=(phones.find(x=>/mobile/i.test(x.phone_type||""))||phones[0]||{}).number||"";
-  return {clinikoId:String(p.id), name, address, phone:ph};
+  return {clinikoId:String(p.id), name, address, phone:ph, email:(p.email||"").trim()};
 }
 $("#clinikoForm").addEventListener("submit", async e=>{
   e.preventDefault();
@@ -870,22 +967,31 @@ $("#clinikoForm").addEventListener("submit", async e=>{
   try{
     const ck=ckClient(key, proxy);
     let patients=[], apptIds=null;
-    if(mode==="week"){
-      const wk=new Date(S.settings.weekStart+"T00:00:00"), end=new Date(wk); end.setDate(end.getDate()+7);
-      ckMsg("Finding appointments for the week of "+esc(S.settings.weekStart)+"...");
+    let weekOf=null;   // patient link -> set of week indexes they're booked in
+    if(mode==="week"||mode==="month"){
+      stashWeek();
+      const first=mode==="month"?0:S.wk, last=mode==="month"?S.weeks.length-1:S.wk;
+      const wk=new Date(S.weeks[first].start+"T00:00:00"), end=new Date(S.weeks[last].start+"T00:00:00"); end.setDate(end.getDate()+7);
+      ckMsg(mode==="month" ? "Finding appointments for the next "+S.weeks.length+" weeks..." : "Finding appointments for the week of "+esc(S.settings.weekStart)+"...");
       const q="individual_appointments?per_page=100&q[]="+encodeURIComponent("starts_at:>="+wk.toISOString())+"&q[]="+encodeURIComponent("starts_at:<"+end.toISOString());
       const appts=(await ck.all(q,"individual_appointments")).filter(a=>!a.cancelled_at && !a.deleted_at && !a.did_not_arrive);
-      const links=[...new Set(appts.map(a=>a.patient&&a.patient.links&&a.patient.links.self).filter(Boolean))];
-      if(!links.length){ ckProg(null); ckMsg("No appointments found in Cliniko for that week. Change the week on <b>This week</b>, or choose All active patients."); return; }
-      for(let i=0;i<links.length;i++){ ckMsg(`Fetching patient ${i+1} of ${links.length}...`); patients.push(await ck.get(links[i])); ckProg((i+1)/links.length); }
+      weekOf=new Map();
+      appts.forEach(a=>{ const l=a.patient&&a.patient.links&&a.patient.links.self; if(!l) return;
+        const t=new Date(a.starts_at); const i=S.weeks.findIndex(w=>{ const s0=new Date(w.start+"T00:00:00"), e0=new Date(s0); e0.setDate(e0.getDate()+7); return t>=s0 && t<e0; });
+        if(i<first||i>last) return; if(!weekOf.has(l)) weekOf.set(l,new Set()); weekOf.get(l).add(i); });
+      const links=[...weekOf.keys()];
+      if(!links.length){ ckProg(null); ckMsg(`No appointments found in Cliniko for ${mode==="month"?"those weeks":"that week"}. Change the dates on <b>Plan weeks</b>, or choose All active patients.`); return; }
+      const idWeeks=new Map();
+      for(let i=0;i<links.length;i++){ ckMsg(`Fetching patient ${i+1} of ${links.length}...`); const p=await ck.get(links[i]); patients.push(p); idWeeks.set(String(p.id), weekOf.get(links[i])); ckProg((i+1)/links.length); }
       apptIds=new Set(patients.map(p=>String(p.id)));
+      weekOf={idWeeks, first, last};
     } else {
       ckMsg("Fetching patients...");
       patients=await ck.all("patients?per_page=100", "patients", (n,t)=>{ ckMsg(`Fetched ${n} of ${t} patients...`); ckProg(n/Math.max(t,1)); });
     }
     let added=0, updated=0, skipped=0;
     const hadExamples=S.clients.some(c=>c.example);
-    if(hadExamples){ S.clients=S.clients.filter(c=>!c.example); S.schedule=null; }
+    if(hadExamples){ S.clients=S.clients.filter(c=>!c.example); clearPlans(); }
     for(const p of patients){
       if(p.archived_at || p.deleted_at) continue;
       const rec=ckRecord(p);
@@ -893,21 +999,31 @@ $("#clinikoForm").addEventListener("submit", async e=>{
       const ex=S.clients.find(c=>c.clinikoId===rec.clinikoId) || S.clients.find(c=>!c.clinikoId && c.name.toLowerCase()===rec.name.toLowerCase());
       if(ex){
         if(ex.address!==rec.address){ ex.geo="pending"; ex.lat=ex.lng=null; }
-        Object.assign(ex, rec, {phone:rec.phone||ex.phone}); if(apptIds) ex.selected=true; updated++;
+        Object.assign(ex, rec, {phone:rec.phone||ex.phone, email:rec.email||ex.email||""}); if(apptIds) ex.selected=true; updated++;
       } else { S.clients.push({id:uid(),selected:!!apptIds,geo:"pending",parent:"",notes:"",visitMin:60,days:[],example:false,...rec}); added++; }
     }
     if(apptIds) S.clients.forEach(c=>{ if(c.clinikoId && !apptIds.has(c.clinikoId)) c.selected=false; });
+    if(weekOf){
+      // Tick each patient in the week(s) they're booked; leave other weeks' manual picks alone.
+      stashWeek();
+      for(let i=weekOf.first;i<=weekOf.last;i++){
+        const keep=S.weeks[i].sel.filter(id=>{ const c=S.clients.find(x=>x.id===id); return c && !c.clinikoId; });
+        const booked=S.clients.filter(c=>c.clinikoId && weekOf.idWeeks.get(c.clinikoId)?.has(i)).map(c=>c.id);
+        S.weeks[i].sel=[...new Set(keep.concat(booked))];
+      }
+      const cur=new Set(S.weeks[S.wk].sel); S.clients.forEach(c=>c.selected=cur.has(c.id));
+    }
     save(); renderClients(); ckProg(null);
     $("#dlgCliniko").close();
-    showImport(`Imported from Cliniko: <b>${added}</b> new${updated?`, ${updated} updated`:""}${skipped?`, ${skipped} skipped (no address in Cliniko)`:""}.${hadExamples?" Example clients removed.":""}${apptIds?" Patients booked that week are ticked.":""}`);
+    showImport(`Imported from Cliniko: <b>${added}</b> new${updated?`, ${updated} updated`:""}${skipped?`, ${skipped} skipped (no address in Cliniko)`:""}.${hadExamples?" Example clients removed.":""}${apptIds?(mode==="month"?" Patients are ticked in the weeks they're booked.":" Patients booked that week are ticked."):""}`);
   }catch(err){ ckProg(null); ckMsg(esc(err.message), true); }
   finally{ go.disabled=false; }
 });
 
 function showImport(html,bad){ const b=$("#importMsg"); b.className="banner "+(bad?"bad":"info"); b.innerHTML=html; b.hidden=false; }
-$("#btnTemplate").addEventListener("click", ()=>download("client-template.csv","Name,Parent/Guardian,Address,Suburb,Postcode,Phone,Visit length (min),Available days,Notes\nJane Example,Sam Example,12 Example St,Southport,4215,0400 000 000,60,\"Mon, Wed\",Gate code 1234\n","text/csv"));
+$("#btnTemplate").addEventListener("click", ()=>download("client-template.csv","Name,Parent/Guardian,Address,Suburb,Postcode,Phone,Email,Visit length (min),Available days,Notes\nJane Example,Sam Example,12 Example St,Southport,4215,0400 000 000,jane@example.com,60,\"Mon, Wed\",Gate code 1234\n","text/csv"));
 $("#btnExportClients").addEventListener("click", ()=>{
-  const lines=[["Name","Parent/Guardian","Address","Phone","Visit length (min)","Available days","Notes"].join(",")].concat(S.clients.map(c=>[c.name,c.parent,c.address,c.phone,c.visitMin,c.days.join(" "),c.notes].map(csvCell).join(",")));
+  const lines=[["Name","Parent/Guardian","Address","Phone","Email","Visit length (min)","Available days","Notes"].join(",")].concat(S.clients.map(c=>[c.name,c.parent,c.address,c.phone,c.email,c.visitMin,c.days.join(" "),c.notes].map(csvCell).join(",")));
   download("clients-backup.csv", lines.join("\n"), "text/csv");
 });
 
@@ -921,18 +1037,23 @@ function renderWeek(){
   $("#selCount").textContent = `(${sel.length})`;
   const mins = sel.reduce((a,c)=>a+c.visitMin,0);
   $("#selList").innerHTML = sel.length ? `<p class="muted" style="margin:0 0 6px">${fmtDur(mins*60)} of visits before driving.</p><div class="row">`+sel.map(c=>`<span class="chip" style="font-size:.85rem">${esc(c.name)} · ${c.visitMin}m${c.days.length?" · "+esc(c.days.join("/")):""}</span>`).join("")+"</div>" : `<p class="muted" style="margin:0">Nobody ticked yet. Tick clients in the <a href="#clients" data-go="clients">client list</a>.</p>`;
+  $("#weekTitle").textContent = `Plan week ${S.wk+1}`;
+  $("#btnSelPrev").hidden = !S.wk || !S.weeks[S.wk-1].sel.length;
   $("#btnBuild").disabled = !sel.length;
   $("#buildHint").textContent = sel.length ? "" : "Tick at least one client first.";
 }
 function readWeek(){
   const st=S.settings;
-  st.baseAddr=$("#baseAddr").value.trim(); st.weekStart=$("#weekStart").value||st.weekStart; st.start=$("#tStart").value||"08:30"; st.end=$("#tEnd").value||"17:00";
+  const ws=$("#weekStart").value; if(ws && ws!==st.weekStart){ shiftWeeks(ws); }
+  st.baseAddr=$("#baseAddr").value.trim(); st.weekStart=ws||st.weekStart; st.start=$("#tStart").value||"08:30"; st.end=$("#tEnd").value||"17:00";
   st.buffer=Math.max(0,+$("#buffer").value||0); st.returnHome=$("#returnHome").checked; st.traffic=$("#traffic").checked; st.mode=$("#mode").value;
   $$("#dayPick input").forEach(i=>st.days[i.dataset.day]=i.checked);
   save();
 }
 $("#v-week").addEventListener("change", readWeek);
-$("#btnSelNone").addEventListener("click", ()=>{ S.clients.forEach(c=>c.selected=false); save(); renderWeek(); });
+$("#btnSelNone").addEventListener("click", ()=>{ S.clients.forEach(c=>c.selected=false); save(); renderWeek(); renderWeekTabs(); });
+$("#btnSelPrev").addEventListener("click", ()=>{ const prev=new Set(S.weeks[S.wk-1].sel); S.clients.forEach(c=>c.selected=prev.has(c.id)); save(); renderWeek(); renderWeekTabs(); });
+$("#v-week").addEventListener("change", ()=>renderWeekTabs());
 
 /* ---------- Maps data: geocoding + drive times (OpenStreetMap) ---------- */
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
@@ -990,9 +1111,12 @@ async function matrix(points, onStep, traffic){
 }
 
 /* ---------- Build ---------- */
-function progress(text,frac){ $("#buildProgress").hidden=false; $("#buildStatus").textContent=text; $("#buildBar").style.width=Math.round(frac*100)+"%"; }
+let batch=null;   // set while "Build all weeks" runs: {i, n, errors}
+function progress(text,frac){
+  if(batch){ $("#monthProgress").hidden=false; $("#monthStatus").textContent=`Week ${batch.i+1} of ${batch.n}: ${text}`; $("#monthBar").style.width=Math.round((batch.i+frac)/batch.n*100)+"%"; if(!frac && !/…/.test(text)) batch.error=text; return; }
+  $("#buildProgress").hidden=false; $("#buildStatus").textContent=text; $("#buildBar").style.width=Math.round(frac*100)+"%"; }
 async function build(){
-  readWeek();
+  if(!batch) readWeek();
   const st=S.settings;
   const dayKeys=DAY_KEYS.filter(k=>st.days[k]);
   if(!dayKeys.length){ progress("Pick at least one working day.",0); return; }
@@ -1056,10 +1180,10 @@ async function build(){
       day.line=line.map(([x,y])=>[+x.toFixed(5),+y.toFixed(5)]);   // [lng,lat]
       delete day.legs;
     }
-    S.schedule={builtAt:new Date().toISOString(), days:outDays, unplaced:res.unplaced.map(i=>usable[i].id), notFound, estimated:mx.estimated, approx:usable.filter(c=>c.geo==="approx").length, lineFormat:"lnglat", traffic, base:{lat:st.baseLat,lng:st.baseLng,addr:st.baseAddr}, returnHome:st.returnHome};
+    S.schedule={builtAt:new Date().toISOString(), days:outDays, unplaced:res.unplaced.map(i=>usable[i].id), notFound, estimated:mx.estimated, approx:usable.filter(c=>c.geo==="approx").length, lineFormat:"lnglat", traffic, selIds:sel.map(c=>c.id), base:{lat:st.baseLat,lng:st.baseLng,addr:st.baseAddr}, returnHome:st.returnHome};
     save();
     $("#buildProgress").hidden=true;
-    go("schedule");
+    if(!batch) go("schedule");
   } finally { $("#btnBuild").disabled=false; }
 }
 $("#btnBuild").addEventListener("click", build);
@@ -1080,7 +1204,7 @@ function renderSchedule(){
   $("#schedNotice").innerHTML="";
   if(!sch){ $("#schedSub").textContent=""; return; }
   const wk=new Date(S.settings.weekStart+"T00:00:00");
-  $("#schedTitle").textContent="Week of "+wk.toLocaleDateString("en-AU",{day:"numeric",month:"long",year:"numeric"});
+  $("#schedTitle").textContent=`Week ${S.wk+1}: `+wk.toLocaleDateString("en-AU",{day:"numeric",month:"long",year:"numeric"});
   $("#schedSub").textContent="Built "+new Date(sch.builtAt).toLocaleString("en-AU",{weekday:"short",hour:"numeric",minute:"2-digit"})+" · starting from "+sch.base.addr;
   const notes=[];
   if(sch.traffic) notes.push(`<div class="banner info">Drive times allow for estimated peak-hour traffic, and the visit order is planned around it. Times are typical-traffic estimates, not live traffic.</div>`);
@@ -1237,9 +1361,107 @@ $("#btnCsv").addEventListener("click", ()=>{
   download(`schedule-${S.settings.weekStart}.csv`, out.join("\n"), "text/csv");
 });
 
+/* ---------- Month view: all weeks together, and messages to let clients know ---------- */
+const TPL_SUBJ = "Your podiatry home visit: {dates}";
+const TPL_MSG = "Hi {first},\n\nYour podiatry home visit times are:\n{visits}\n\nPlease let us know if a time doesn't suit.\n\nThank you";
+function monthVisits(){
+  stashWeek();
+  const by=new Map();
+  S.weeks.forEach((w,wi)=>{ const sch=w.schedule; if(!sch) return;
+    sch.days.forEach(d=>d.stops.forEach(s=>{ if(!by.has(s.id)) by.set(s.id,[]); by.get(s.id).push({wi, day:d.key, date:d.date, arrive:s.arrive, depart:s.depart}); })); });
+  const out=[...by].map(([id,v])=>({c:client(id), visits:v.sort((a,b)=>a.date.localeCompare(b.date)||a.arrive-b.arrive)}));
+  return out.sort((a,b)=>a.visits[0].date.localeCompare(b.visits[0].date)||a.visits[0].arrive-b.visits[0].arrive);
+}
+const r15 = m => Math.round(m/15)*15;
+function visitText(v){
+  const win=+(S.settings.msgWindow??60), d=new Date(v.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"long",day:"numeric",month:"long"});
+  const t=r15(v.arrive);
+  return win ? `${d}, between ${fmtTime(t-win/2)} and ${fmtTime(t+win/2)}` : `${d}, at about ${fmtTime(t)}`;
+}
+function fill(tpl, c, visits){
+  const dates=visits.map(v=>new Date(v.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"})).join(", ");
+  return tpl.replace(/\{first\}/g, (c.name||"").split(/\s+/)[0]).replace(/\{name\}/g, c.name||"")
+    .replace(/\{visits\}/g, visits.map(v=>"- "+visitText(v)).join("\n")).replace(/\{dates\}/g, dates);
+}
+function smsHref(phone, body){ const n=String(phone).replace(/[^\d+]/g,""); return n ? `sms:${n}?&body=${encodeURIComponent(body)}` : ""; }
+function mailHref(email, subj, body){ return `mailto:${encodeURIComponent(email).replace(/%40/g,"@")}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`; }
+async function copyText(text, btn){
+  let ok=false;
+  try{ await navigator.clipboard.writeText(text); ok=true; }catch(e){
+    const t=document.createElement("textarea"); t.value=text; t.style.position="fixed"; t.style.opacity="0"; document.body.appendChild(t); t.select();
+    try{ ok=document.execCommand("copy"); }catch(e2){} t.remove(); }
+  if(btn){ const was=btn.textContent; btn.textContent=ok?"Copied":"Couldn't copy"; setTimeout(()=>btn.textContent=was,1500); }
+}
+function renderMonth(){
+  stashWeek();
+  const st=S.settings, W=S.weeks, last=W[W.length-1];
+  $("#monthSub").textContent=`${W.length} weeks, ${weekLabel(W[0])} to ${new Date(addDays(last.start,6)+"T00:00:00").toLocaleDateString("en-AU",{day:"numeric",month:"short",year:"numeric"})}. Set up each week, build them all, then send clients their times.`;
+  $("#weekSum").innerHTML=W.map((w,i)=>{
+    const days=DAY_KEYS.filter(k=>w.days[k]), sch=w.schedule, stale=weekStale(w);
+    const visits=sch? sch.days.reduce((a,d)=>a+d.stops.length,0) : 0, drive=sch? sch.days.reduce((a,d)=>a+d.driveSec,0):0;
+    const miss=sch? sch.unplaced.length+sch.notFound.length : 0;
+    const status = !w.sel.length ? `<span class="chip">No clients ticked</span>` : !sch ? `<span class="chip ex">Not built yet</span>` : stale ? `<span class="chip ex">Clients changed, rebuild</span>` : `<span class="chip ok">Built</span>`;
+    return `<div class="card"><div class="row spread"><b>Week ${i+1}</b>${status}</div>
+      <div class="small">${esc(weekLabel(w,{weekday:"short",day:"numeric",month:"short"}))} · ${days.length?esc(days.join(", ")):"No working days"} · ${esc(fmtTime(toMin(w.start_t||st.start)))}–${esc(fmtTime(toMin(w.end_t||st.end)))}</div>
+      <div class="small muted">${w.sel.length} client${w.sel.length===1?"":"s"} ticked${sch?` · ${visits} visits · ${fmtDur(drive)} driving`:""}</div>
+      ${miss?`<div class="small" style="color:var(--bad)">${miss} client${miss===1?"":"s"} couldn't be fitted in</div>`:""}
+      <div class="row"><button class="btn link" data-open-wk="${i}" data-to="week">Edit week</button>${sch?`<button class="btn link" data-open-wk="${i}" data-to="schedule">View schedule</button>`:""}</div></div>`;
+  }).join("");
+  $("#btnBuildAll").disabled=!W.some(w=>w.sel.length);
+  $("#msgSubj").value=st.msgSubj??TPL_SUBJ; $("#msgTpl").value=st.msgTpl??TPL_MSG; $("#msgWindow").value=String(st.msgWindow??60);
+  const list=monthVisits(), subjT=st.msgSubj??TPL_SUBJ, msgT=st.msgTpl??TPL_MSG;
+  $("#msgCount").textContent=list.length?`(${list.length} client${list.length===1?"":"s"})`:"";
+  $("#btnCopyAll").disabled=!list.length;
+  $("#msgList").innerHTML = list.length ? list.map(({c,visits},k)=>{
+    const body=fill(msgT,c,visits), subj=fill(subjT,c,visits), sms=c.phone&&smsHref(c.phone,body);
+    return `<div class="msg"><div><b>${esc(c.name)}</b> <span class="muted small">${esc([c.phone,c.email].filter(Boolean).join(" · "))}</span>
+        <ul class="small">${visits.map(v=>`<li>Week ${v.wi+1}: ${esc(visitText(v))}</li>`).join("")}</ul></div>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn" data-copy="${k}">Copy</button>
+        ${c.email?`<a class="btn primary" href="${esc(mailHref(c.email,subj,body))}">Email</a>`:`<button class="btn" disabled title="Add an email address in the client list">No email</button>`}
+        ${sms?`<a class="btn" href="${esc(sms)}">Text</a>`:""}
+      </div>
+      <details class="small"><summary style="cursor:pointer;color:var(--accent);font-weight:600">Preview message</summary><pre>${esc(body)}</pre></details></div>`;
+  }).join("") : `<p class="muted" style="margin:0">No visits yet. Build the weeks above and each client's visit times will show here, ready to send.</p>`;
+  renderMonth.list=list.map(({c,visits})=>({c, visits, body:fill(msgT,c,visits)}));
+}
+$("#v-month").addEventListener("click", e=>{
+  const o=e.target.closest("[data-open-wk]"); if(o){ loadWeek(+o.dataset.openWk); go(o.dataset.to); return; }
+  const cp=e.target.closest("[data-copy]"); if(cp){ copyText(renderMonth.list[+cp.dataset.copy].body, cp); }
+});
+$("#btnCopyAll").addEventListener("click", e=>copyText(renderMonth.list.map(x=>`${x.c.name}${x.c.phone?" ("+x.c.phone+")":""}${x.c.email?" <"+x.c.email+">":""}\n${x.body}`).join("\n\n----------\n\n"), e.currentTarget));
+$("#v-month").addEventListener("change", e=>{
+  if(!e.target.closest("details")) return;
+  S.settings.msgSubj=$("#msgSubj").value; S.settings.msgTpl=$("#msgTpl").value; S.settings.msgWindow=+$("#msgWindow").value; save(); renderMonth();
+});
+$("#btnTplReset").addEventListener("click", ()=>{ delete S.settings.msgSubj; delete S.settings.msgTpl; save(); renderMonth(); });
+$("#btnBuildAll").addEventListener("click", async ()=>{
+  const btn=$("#btnBuildAll"), orig=S.wk, todo=S.weeks.map((w,i)=>i).filter(i=>S.weeks[i].sel.length), problems=[];
+  btn.disabled=true;
+  try{
+    for(let n=0;n<todo.length;n++){
+      const i=todo[n]; loadWeek(i); batch={i:n, n:todo.length};
+      const before=S.schedule&&S.schedule.builtAt;
+      await build();
+      if(batch.error || !S.schedule || S.schedule.builtAt===before) problems.push(`Week ${i+1}: ${batch.error||"couldn't build"}`);
+      save();
+    }
+  } finally {
+    batch=null; loadWeek(orig); btn.disabled=false; $("#monthProgress").hidden=true; renderMonth();
+    if(problems.length){ $("#monthProgress").hidden=false; $("#monthStatus").innerHTML=problems.map(esc).join("<br>"); $("#monthBar").style.width="0"; }
+  }
+});
+$("#btnMonthCsv").addEventListener("click", ()=>{
+  stashWeek();
+  const out=[["Week","Day","Date","Arrive","Leave","Name","Address","Phone","Email","Visit (min)","Notes"].join(",")];
+  S.weeks.forEach((w,wi)=>{ if(!w.schedule) return; w.schedule.days.forEach(d=>d.stops.forEach(s=>{ const c=client(s.id);
+    out.push([wi+1,DAY_NAMES[d.key],d.date,fmtTime(s.arrive),fmtTime(s.depart),c.name,c.address,c.phone,c.email,c.visitMin,c.notes].map(csvCell).join(",")); })); });
+  download(`visits-${S.weeks[0].start}-to-${addDays(S.weeks[S.weeks.length-1].start,6)}.csv`, out.join("\n"), "text/csv");
+});
+
 /* ---------- Boot ---------- */
 const start=(location.hash||"").slice(1);
-go(["clients","week","schedule"].includes(start)?start:(S.schedule?"schedule":"clients"));
+go(["clients","week","schedule","month"].includes(start)?start:(S.schedule?"schedule":"clients"));
 })();
 </script>
 </body>
