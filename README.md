@@ -7,3 +7,7 @@ Weekly route planner for home visits on the Gold Coast. Import a client list (CS
 - Drive times use typical road speeds plus an estimated peak-hour slowdown, not live traffic.
 
 Hosted with GitHub Pages: open `index.html`.
+
+## Cliniko
+
+Clients can be imported from Cliniko either with a patient CSV export (no setup) or live via **Import from Cliniko**, which needs a small free proxy. See [`cliniko-proxy/`](cliniko-proxy/README.md).
