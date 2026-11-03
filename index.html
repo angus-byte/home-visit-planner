@@ -112,6 +112,20 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .stat{display:grid;gap:4px}
 .stat span{font-size:.8rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
 .stat b{font-size:1.75rem;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.homegrid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:16px;align-items:start}
+@media (max-width:860px){ .homegrid{grid-template-columns:1fr} }
+@media (max-width:520px){ .homedays .hd{grid-template-columns:12px 1fr auto} .homedays .hd .muted{grid-column:2/4;grid-row:2} }
+.homedays{display:grid;gap:6px}
+.homedays .hd{display:grid;grid-template-columns:12px 90px 1fr auto;gap:10px;align-items:center;font-size:.9rem;padding:8px 10px;border-radius:10px;background:var(--soft)}
+.homedays .hd i{width:10px;height:10px;border-radius:50%}
+.homeweeks{display:grid;gap:6px}
+.homeweeks button{font:inherit;text-align:left;display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px 14px;cursor:pointer;transition:background .15s,transform .08s}
+.homeweeks button:hover{background:var(--soft)}
+.homeweeks button:active{transform:scale(.99)}
+.homeweeks button[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.homeweeks .st{font-size:.8rem;font-weight:700;border-radius:999px;padding:3px 10px;background:var(--soft-2);color:var(--muted)}
+.homeweeks .st.ok{background:#e3f4ea;color:#1d6b3c}
+.homeweeks .st.warn{background:#fdf1dc;color:#8a5a00}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px}
 #map{border-radius:var(--r);border:1px solid var(--line);background:#fff;overflow:hidden;position:relative;box-shadow:var(--shadow-2)}
 #map.live{height:min(68vh,600px)}
@@ -145,6 +159,15 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .empty{padding:18px 16px;color:var(--muted)}
 .tag-busy{display:inline-block;margin-left:4px;font-size:.7rem;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--warn-soft);color:var(--warn)}
 .pin{width:22px;height:22px;border-radius:50%;color:#fff;font:700 12px/22px var(--f-body);text-align:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(15,31,38,.35)}
+/* Address type-ahead */
+.ac-wrap{position:relative;display:block}
+.ac-list{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:900;margin:0;padding:6px;list-style:none;background:#fff;border:1px solid var(--line-strong);border-radius:12px;box-shadow:0 12px 32px rgba(15,31,38,.16);max-height:300px;overflow-y:auto}
+.ac-list li{padding:9px 12px;border-radius:8px;cursor:pointer;color:var(--ink);font-weight:500;font-size:.95rem;display:flex;gap:8px;align-items:center;justify-content:space-between}
+.ac-list li[aria-selected="true"],.ac-list li:hover{background:var(--accent-soft)}
+.ac-list li small{color:var(--good);font-weight:600;font-size:.75rem;white-space:nowrap}
+.ac-list li.note{cursor:default;color:var(--muted);font-weight:400;font-size:.85rem}
+.ac-list li.note:hover{background:none}
+dialog{overflow:visible}
 dialog{border:0;border-radius:18px;background:#fff;color:var(--ink);padding:0;width:min(560px,calc(100vw - 32px));box-shadow:0 24px 60px rgba(15,31,38,.25)}
 dialog::backdrop{background:rgba(15,31,38,.35);backdrop-filter:blur(2px)}
 dialog form{padding:24px;display:grid;gap:14px}
@@ -188,6 +211,7 @@ nav.steps button{border-radius:999px}
       Home Visit Planner
     </div>
     <nav class="steps" aria-label="Steps">
+      <button data-go="home"><span class="n"><svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M1 6 6 1.5 11 6M2.5 5v5.5h7V5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>Home</button>
       <button data-go="clients"><span class="n">1</span>Clients</button>
       <button data-go="week"><span class="n">2</span>Plan weeks</button>
       <button data-go="schedule"><span class="n">3</span>Schedule</button>
@@ -197,6 +221,53 @@ nav.steps button{border-radius:999px}
 </header>
 
 <main class="wrap">
+
+<!-- HOME -->
+<section class="view" id="v-home" hidden>
+  <div>
+    <h1 id="homeHello">Home</h1>
+    <p class="muted" style="margin:4px 0 0" id="homeSub"></p>
+  </div>
+  <div id="homeNotice"></div>
+  <div class="homegrid">
+    <div class="card" style="display:grid;gap:14px;align-content:start">
+      <h2 style="font-size:1.2rem;margin:0">Your details</h2>
+      <label class="f">Start and finish address (home or rooms)<input type="text" id="baseAddr" placeholder="e.g. 12 Example St, Southport QLD 4215" autocomplete="off"></label>
+      <div class="grid2">
+        <label class="f">Usual first visit<input type="time" id="hStart"></label>
+        <label class="f">Usual finish<input type="time" id="hEnd"></label>
+      </div>
+      <div>
+        <div class="f" style="margin-bottom:6px;font-size:.875rem;font-weight:700;color:var(--muted)">Usual working days</div>
+        <div class="daypick" id="hDayPick"></div>
+      </div>
+      <div class="grid2">
+        <label class="f">Gap between visits (min)<input type="number" id="buffer" min="0" max="60" step="5"></label>
+        <label class="f">Day style
+          <select id="mode"><option value="balance">Spread visits evenly across days</option><option value="pack">Fewest days, least driving</option></select>
+        </label>
+      </div>
+      <label class="row small" style="flex-wrap:nowrap;align-items:flex-start"><input type="checkbox" id="returnHome"><span>Drive back to the start address at the end of each day</span></label>
+      <label class="row small" style="flex-wrap:nowrap;align-items:flex-start"><input type="checkbox" id="traffic"><span>Allow for peak-hour traffic (about 7–9:30am, school pick-up and 3:30–6:30pm)</span></label>
+      <p class="muted small" style="margin:0">Changing usual days or hours updates every week that isn't built yet. You can still adjust a single week in Plan weeks.</p>
+    </div>
+    <div style="display:grid;gap:16px;align-content:start">
+      <div class="card" style="display:grid;gap:12px">
+        <div class="row spread">
+          <h2 style="font-size:1.2rem;margin:0" id="homeWeekTitle">This week</h2>
+          <div class="row" id="homeWeekBtns"></div>
+        </div>
+        <div class="stats" id="homeStats"></div>
+        <div id="homeDays" class="homedays"></div>
+      </div>
+      <div class="card" style="display:grid;gap:10px">
+        <h2 style="font-size:1.2rem;margin:0">Next 4 weeks</h2>
+        <div id="homeWeeks" class="homeweeks"></div>
+      </div>
+    </div>
+  </div>
+  <p class="privacy">Client details are saved only in this browser on this device and are never uploaded.</p>
+</section>
 
 <!-- CLIENTS -->
 <section class="view" id="v-clients" hidden>
@@ -258,8 +329,8 @@ nav.steps button{border-radius:999px}
   </div>
   <div class="card" style="display:grid;gap:14px">
     <div class="grid2">
-      <label class="f">Start and finish address (home or rooms)<input type="text" id="baseAddr" placeholder="e.g. 12 Example St, Southport QLD 4215"></label>
       <label class="f">Week starting (Monday)<input type="date" id="weekStart"></label>
+      <div class="f small" style="align-self:end"><span class="muted">Starting from</span> <b id="weekBase"></b> <button class="btn link" data-go="home">Change</button></div>
     </div>
     <div>
       <div class="f" style="margin-bottom:6px;font-size:.875rem;font-weight:700;color:var(--muted)">Working days</div>
@@ -268,13 +339,8 @@ nav.steps button{border-radius:999px}
     <div class="grid2">
       <label class="f">First visit from<input type="time" id="tStart"></label>
       <label class="f">Finish by<input type="time" id="tEnd"></label>
-      <label class="f">Gap between visits (min)<input type="number" id="buffer" min="0" max="60" step="5"></label>
-      <label class="f">Day style
-        <select id="mode"><option value="balance">Spread visits evenly across days</option><option value="pack">Fewest days, least driving</option></select>
-      </label>
     </div>
-    <label class="row small"><input type="checkbox" id="returnHome"> Drive back to the start address at the end of each day</label>
-    <label class="row small"><input type="checkbox" id="traffic"> Allow for peak-hour traffic (about 7–9:30am, school pick-up and 3:30–6:30pm)</label>
+    <p class="muted small" style="margin:0">Gap between visits, day style and traffic are set once on the <button class="btn link" data-go="home">Home</button> page.</p>
   </div>
   <div class="card" style="display:grid;gap:10px">
     <div class="row spread">
@@ -586,7 +652,31 @@ const GeoData = (() => {
       const mid=Math.floor(arr.length/6)*3;
       return {lat:arr[mid+1]/1e5, lng:arr[mid+2]/1e5, quality:"street", label};
     }
-    return {locate};
+    // Type-ahead: "12 orchid av" -> ["12 Orchid Avenue, Surfers Paradise QLD 4217", ...]
+    const subPc=new Map(); for(const [pc,subs] of Object.entries(idx.pc)) for(const su of subs) if(!subPc.has(su)) subPc.set(su,pc);
+    const streets=[...Object.keys(idx.s)].map(k=>{ const [st,su]=k.split("|"); return {k,st,su,hay:st+" "+su}; });
+    const tc=w=>w.toLowerCase().replace(/(^|[\s\-'])([a-z])/g,(m,a,b)=>a+b.toUpperCase());
+    function fmt(num,st,su){ const pc=subPc.get(su)||""; const state=/^2/.test(pc)?"NSW":"QLD"; return (num!=null?num+" ":"")+tc(st)+", "+tc(su)+" "+state+(pc?" "+pc:""); }
+    function suggest(text, limit=7){
+      const raw=String(text).toUpperCase().replace(/[^A-Z0-9\/\- ]+/g," ").trim();
+      if(raw.length<3) return [];
+      const m=raw.match(/^(?:(?:UNIT|U|APT|SHOP)\s*)?(?:(\w+)\s*\/\s*)?(\d+)[A-Z]?(?:-\d+)?\s+(.*)$/);
+      const unit=m&&m[1]?m[1]:null, num=m?+m[2]:null, rest=(m?m[3]:raw).trim();
+      if(rest.length<2) return [];
+      const words=rest.split(/\s+/), last=words.pop();
+      const head=words.map(w=>ABBR[w]||w);
+      const qs=[[...head,last].join(" ")]; if(ABBR[last]) qs.push([...head,ABBR[last]].join(" "));
+      const out=[];
+      for(const e of streets){
+        if(!qs.some(q=>e.hay.startsWith(q))) continue;
+        let exact=false;
+        if(num!=null){ const arr=idx.s[e.k]; for(let k=0;k<arr.length;k+=3) if(arr[k]===num){ exact=true; break; } }
+        out.push({e,exact});
+      }
+      out.sort((a,b)=>(b.exact-a.exact)||(a.e.st.length-b.e.st.length)||a.e.hay.localeCompare(b.e.hay));
+      return out.slice(0,limit).map(({e,exact})=>({text:(unit?unit+"/":"")+fmt(num,e.st,e.su), exact: num==null?null:exact}));
+    }
+    return {locate, suggest};
   }
 
   /* ---- Road router ---- */
@@ -769,6 +859,7 @@ function save(){ stashWeek(); try { localStorage.setItem(STORE, JSON.stringify({
 function go(view){
   $$("section.view").forEach(s=>s.hidden = s.id !== "v-"+view);
   $$("nav.steps button").forEach(b=>b.setAttribute("aria-current", b.dataset.go===view));
+  if(view==="home") renderHome();
   if(view==="clients") renderClients();
   if(view==="week") renderWeek();
   if(view==="schedule") renderSchedule();
@@ -1030,8 +1121,8 @@ $("#btnExportClients").addEventListener("click", ()=>{
 /* ---------- Week view ---------- */
 function renderWeek(){
   const st=S.settings;
-  $("#baseAddr").value=st.baseAddr; $("#weekStart").value=st.weekStart; $("#tStart").value=st.start; $("#tEnd").value=st.end;
-  $("#buffer").value=st.buffer; $("#returnHome").checked=st.returnHome; $("#traffic").checked=st.traffic!==false; $("#mode").value=st.mode;
+  $("#weekStart").value=st.weekStart; $("#tStart").value=st.start; $("#tEnd").value=st.end;
+  $("#weekBase").textContent=st.baseAddr||"no address yet";
   $("#dayPick").innerHTML = DAY_KEYS.map(k=>`<label><input type="checkbox" data-day="${k}" ${st.days[k]?"checked":""}>${k}</label>`).join("");
   const sel=S.clients.filter(c=>c.selected);
   $("#selCount").textContent = `(${sel.length})`;
@@ -1045,12 +1136,116 @@ function renderWeek(){
 function readWeek(){
   const st=S.settings;
   const ws=$("#weekStart").value; if(ws && ws!==st.weekStart){ shiftWeeks(ws); }
-  st.baseAddr=$("#baseAddr").value.trim(); st.weekStart=ws||st.weekStart; st.start=$("#tStart").value||"08:30"; st.end=$("#tEnd").value||"17:00";
-  st.buffer=Math.max(0,+$("#buffer").value||0); st.returnHome=$("#returnHome").checked; st.traffic=$("#traffic").checked; st.mode=$("#mode").value;
+  st.weekStart=ws||st.weekStart; st.start=$("#tStart").value||"08:30"; st.end=$("#tEnd").value||"17:00";
   $$("#dayPick input").forEach(i=>st.days[i.dataset.day]=i.checked);
   save();
 }
 $("#v-week").addEventListener("change", readWeek);
+
+/* ---------- Home dashboard ---------- */
+function usual(){ const st=S.settings; if(!st.usual) st.usual={days:{...st.days}, start:st.start, end:st.end}; return st.usual; }
+function renderHome(){
+  stashWeek();
+  const st=S.settings, u=usual(), W=S.weeks, w=W[S.wk], sch=S.schedule;
+  $("#baseAddr").value=st.baseAddr; $("#hStart").value=u.start; $("#hEnd").value=u.end;
+  $("#buffer").value=st.buffer; $("#returnHome").checked=st.returnHome; $("#traffic").checked=st.traffic!==false; $("#mode").value=st.mode;
+  $("#hDayPick").innerHTML=DAY_KEYS.map(k=>`<label><input type="checkbox" data-hday="${k}" ${u.days[k]?"checked":""}>${k}</label>`).join("");
+  const h=new Date().getHours();
+  $("#homeHello").textContent=h<12?"Good morning":h<17?"Good afternoon":"Good evening";
+  $("#homeSub").textContent=`${S.clients.length} client${S.clients.length===1?"":"s"} in your list · planning ${W.length} weeks from ${weekLabel(W[0])}`;
+  const notes=[];
+  if(!st.baseAddr) notes.push(`<div class="banner warn">Add your start and finish address below so drive times can be worked out.</div>`);
+  if(!S.clients.length) notes.push(`<div class="banner info"><span style="flex:1">No clients yet. Import your list to get started.</span><button class="btn" data-go="clients">Go to clients</button></div>`);
+  $("#homeNotice").innerHTML=notes.join("");
+  // Selected week overview
+  const stale=weekStale(w);
+  $("#homeWeekTitle").innerHTML=`Week ${S.wk+1} <span class="muted" style="font-weight:400;font-size:.95rem">${esc(weekLabel(w,{weekday:"short",day:"numeric",month:"short"}))}</span>`;
+  $("#homeWeekBtns").innerHTML = sch
+    ? `${stale?'<button class="btn primary" data-go="week">Rebuild</button>':""}<button class="btn${stale?"":" primary"}" data-go="schedule">Open schedule</button>`
+    : `<button class="btn primary" data-go="${w.sel.length?"week":"clients"}">${w.sel.length?"Plan this week":"Pick clients"}</button>`;
+  if(sch){
+    const visits=sch.days.reduce((a,d)=>a+d.stops.length,0), drive=sch.days.reduce((a,d)=>a+d.driveSec,0), km=sch.days.reduce((a,d)=>a+d.driveM,0);
+    const used=sch.days.filter(d=>d.stops.length);
+    $("#homeStats").innerHTML=`
+      <div class="stat"><span class="muted">Visits</span><b>${visits}</b></div>
+      <div class="stat"><span class="muted">Driving</span><b>${fmtDur(drive)}</b></div>
+      <div class="stat"><span class="muted">Distance</span><b>${Math.round(km/1000)} km</b></div>
+      <div class="stat"><span class="muted">Days out</span><b>${used.length}</b></div>`;
+    const miss=sch.unplaced.length+sch.notFound.length;
+    $("#homeDays").innerHTML=sch.days.map((d,i)=>{
+      const dt=new Date(d.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"});
+      return `<div class="hd"><i style="background:${d.stops.length?dayColor(i):"var(--line)"}"></i><b>${esc(dt)}</b>
+        <span class="muted">${d.stops.length?`${d.stops.length} visit${d.stops.length===1?"":"s"} · ${fmtTime(d.leave)} to ${fmtTime(d.end)}`:"No visits"}</span>
+        <span class="small">${d.stops.length?fmtDur(d.driveSec)+" drive":""}</span></div>`;
+    }).join("")+(stale?`<div class="banner warn">The clients for this week have changed since it was built. Rebuild to update it.</div>`:"")
+      +(miss?`<div class="banner bad">${miss} client${miss===1?"":"s"} couldn't be fitted in. Open the schedule for details.</div>`:"");
+  } else {
+    const sel=S.clients.filter(c=>c.selected), mins=sel.reduce((a,c)=>a+c.visitMin,0), days=DAY_KEYS.filter(k=>st.days[k]);
+    $("#homeStats").innerHTML=`
+      <div class="stat"><span class="muted">Clients ticked</span><b>${sel.length}</b></div>
+      <div class="stat"><span class="muted">Visit time</span><b>${mins?fmtDur(mins*60):"–"}</b></div>
+      <div class="stat"><span class="muted">Working days</span><b>${days.length}</b></div>`;
+    $("#homeDays").innerHTML=`<p class="muted small" style="margin:0">${sel.length?"Not built yet. Plan this week to get the best visit order and drive times.":"Tick the clients you're seeing this week in the client list."} Working ${days.length?esc(days.join(", ")):"no days"}, ${esc(fmtTime(toMin(st.start)))} to ${esc(fmtTime(toMin(st.end)))}.</p>`;
+  }
+  // All weeks
+  $("#homeWeeks").innerHTML=W.map((x,i)=>{
+    const s2=x.schedule, v=s2?s2.days.reduce((a,d)=>a+d.stops.length,0):0, dr=s2?s2.days.reduce((a,d)=>a+d.driveSec,0):0;
+    const tag=!x.sel.length?`<span class="st">No clients</span>`:!s2?`<span class="st">Not built</span>`:weekStale(x)?`<span class="st warn">Rebuild</span>`:`<span class="st ok">Built</span>`;
+    return `<button data-wk="${i}" aria-pressed="${i===S.wk}"><b>Week ${i+1} <span class="muted" style="font-weight:400">${esc(weekLabel(x,{day:"numeric",month:"short"}))}</span></b>${tag}
+      <span class="small muted">${x.sel.length} client${x.sel.length===1?"":"s"}${s2?` · ${v} visits · ${fmtDur(dr)} driving`:""}</span></button>`;
+  }).join("");
+}
+function readHome(e){
+  const st=S.settings, u=usual();
+  st.baseAddr=$("#baseAddr").value.trim();
+  st.buffer=Math.max(0,+$("#buffer").value||0); st.returnHome=$("#returnHome").checked; st.traffic=$("#traffic").checked; st.mode=$("#mode").value;
+  const t=e&&e.target;
+  if(t && (t.id==="hStart"||t.id==="hEnd"||t.dataset.hday)){
+    u.start=$("#hStart").value||"08:30"; u.end=$("#hEnd").value||"17:00";
+    $$("#hDayPick input").forEach(i=>u.days[i.dataset.hday]=i.checked);
+    // Apply to every week that isn't built yet
+    stashWeek();
+    S.weeks.forEach(w=>{ if(!w.schedule){ w.days={...u.days}; w.start_t=u.start; w.end_t=u.end; } });
+    if(!S.schedule){ st.days={...u.days}; st.start=u.start; st.end=u.end; }
+  }
+  save(); renderHome();
+}
+$("#v-home").addEventListener("change", readHome);
+
+/* ---------- Address type-ahead (uses the built-in Gold Coast address list; nothing is sent anywhere) ---------- */
+function attachAutocomplete(input){
+  const wrap=document.createElement("span"); wrap.className="ac-wrap";
+  input.parentNode.insertBefore(wrap,input); wrap.appendChild(input);
+  const list=document.createElement("ul"); list.className="ac-list"; list.id=input.id+"-ac"; list.setAttribute("role","listbox"); list.hidden=true; wrap.appendChild(list);
+  input.setAttribute("autocomplete","off"); input.setAttribute("role","combobox"); input.setAttribute("aria-autocomplete","list"); input.setAttribute("aria-controls",list.id); input.setAttribute("aria-expanded","false");
+  let items=[], active=-1, seq=0;
+  const close=()=>{ list.hidden=true; input.setAttribute("aria-expanded","false"); active=-1; };
+  const highlight=i=>{ active=i; [...list.querySelectorAll("li[role=option]")].forEach((li,k)=>li.setAttribute("aria-selected",k===i)); };
+  function pick(i){ const it=items[i]; if(!it) return; input.value=it.text; close(); input.dispatchEvent(new Event("input",{bubbles:true})); input.dispatchEvent(new Event("change",{bubbles:true})); }
+  async function update(){
+    const my=++seq, q=input.value;
+    if(q.trim().length<3){ close(); return; }
+    const g=await loadGeocoder(); if(my!==seq) return;
+    if(!g){ close(); return; }
+    items=g.suggest(q);
+    if(!items.length){ list.innerHTML='<li class="note">No matching Gold Coast street. Keep typing, or include the suburb.</li>'; }
+    else list.innerHTML=items.map((it,k)=>`<li role="option" id="${list.id}-${k}" aria-selected="false" data-i="${k}"><span>${esc(it.text)}</span>${it.exact?"<small>Address found</small>":""}</li>`).join("");
+    list.hidden=false; input.setAttribute("aria-expanded","true"); highlight(items.length?0:-1);
+  }
+  input.addEventListener("input", e=>{ if(e.isTrusted) update(); });
+  input.addEventListener("focus", ()=>{ loadGeocoder(); });
+  input.addEventListener("keydown", e=>{
+    if(list.hidden||!items.length) return;
+    if(e.key==="ArrowDown"){ e.preventDefault(); highlight((active+1)%items.length); }
+    else if(e.key==="ArrowUp"){ e.preventDefault(); highlight((active-1+items.length)%items.length); }
+    else if(e.key==="Enter"&&active>=0){ e.preventDefault(); pick(active); }
+    else if(e.key==="Escape"){ close(); }
+  });
+  list.addEventListener("mousedown", e=>{ e.preventDefault(); const li=e.target.closest("li[data-i]"); if(li) pick(+li.dataset.i); });
+  input.addEventListener("blur", ()=>setTimeout(close,100));
+}
+attachAutocomplete($("#baseAddr"));
+attachAutocomplete($("#cAddr"));
 $("#btnSelNone").addEventListener("click", ()=>{ S.clients.forEach(c=>c.selected=false); save(); renderWeek(); renderWeekTabs(); });
 $("#btnSelPrev").addEventListener("click", ()=>{ const prev=new Set(S.weeks[S.wk-1].sel); S.clients.forEach(c=>c.selected=prev.has(c.id)); save(); renderWeek(); renderWeekTabs(); });
 $("#v-week").addEventListener("change", ()=>renderWeekTabs());
@@ -1461,7 +1656,7 @@ $("#btnMonthCsv").addEventListener("click", ()=>{
 
 /* ---------- Boot ---------- */
 const start=(location.hash||"").slice(1);
-go(["clients","week","schedule","month"].includes(start)?start:(S.schedule?"schedule":"clients"));
+go(["home","clients","week","schedule","month"].includes(start)?start:"home");
 })();
 </script>
 </body>
