@@ -287,8 +287,13 @@ select.freq{min-height:34px;padding:4px 28px 4px 12px;font-size:.85rem;font-weig
 .ddslots .t{font-weight:700;font-variant-numeric:tabular-nums;color:var(--muted);text-align:right}
 .ddslots .drop{min-height:38px;border:1.5px dashed var(--line-strong);border-radius:10px;padding:4px 8px;display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.8rem;transition:background .12s,border-color .12s}
 .ddslots .drop.hot{background:var(--accent-soft);border-color:var(--accent);border-style:solid}
-.ddslots .drop.full{border-style:solid;border-color:var(--accent);background:#fff;color:var(--ink)}
-.ddslots .drop .x{margin-left:auto;border:0;background:none;cursor:pointer;color:var(--muted);font-size:1.1rem;width:28px;height:28px;border-radius:50%}
+.ddslots .drop.full{border-style:solid;border-color:var(--accent);background:#fff;color:var(--ink);flex-wrap:wrap}
+.ddslots .drop.auto{border-style:dashed;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));background:var(--good-soft)}
+.ddslots .drop .tag{margin-left:auto;font-size:.72rem;color:var(--accent);font-weight:700}
+.ddslots .drop .fixbtn{margin-left:auto;font-size:.78rem;padding:2px 6px;min-height:0}
+.ddslots li.edge{min-height:24px}
+.ddslots .drop .chip.zone{font-size:.68rem}
+.ddslots .drop .x{border:0;background:none;cursor:pointer;color:var(--muted);font-size:1.1rem;width:28px;height:28px;border-radius:50%}
 .ddslots .drop .x:hover{background:var(--bad-soft);color:var(--bad)}
 .ddroute{list-style:none;margin:0;padding:10px 12px;border-radius:12px;background:var(--good-soft);display:grid;gap:4px;font-size:.88rem}
 .ddroute .t{display:inline-block;min-width:62px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -674,7 +679,7 @@ nav.steps button{border-radius:999px}
         <p class="muted small" style="margin:0">Drag a client onto a time to fix them there.</p>
       </div>
       <div class="ddpane">
-        <div class="row spread small"><b>3. Fixed times</b><span class="muted" id="ddFree"></span></div>
+        <div class="row spread small"><b>3. Times</b><span class="muted" id="ddFree"></span></div>
         <ol id="ddSlots" class="ddslots"></ol>
         <div id="ddRoute"></div>
       </div>
@@ -2653,15 +2658,28 @@ function renderDayDlg(){
       <span class="pinat">${pin?"📌 "+fmtTime(toMin(pin)):""}</span>
       <button type="button" class="grip" data-drag="${c.id}" aria-label="Drag ${esc(c.name)} to a time">${GRIP}</button></li>`; }).join("")
     : `<li class="muted" style="display:block">${p.zone&&!$("#ddAll").checked?`No clients in ${esc(p.zone)} yet. Tick "All zones", or set zones in the client list.`:"No clients match."}</li>`;
-  // Slots
+  // Slots. Once a route is found, every visit sits in the slot list at its planned time (fixed ones solid, the rest dashed),
+  // with the empty slots that don't clash with a visit left as drop targets.
   const byTime={}; Object.entries(p.pins).forEach(([id,t])=>{ if(p.ids.includes(id)) (byTime[t] ||= []).push(id); });
-  $("#ddSlots").innerHTML=ddSlotTimes(p).map(t=>{ const ids=byTime[t]||[];
-    return `<li><span class="t">${fmtTime(toMin(t))}</span><div class="drop${ids.length?" full":""}" data-slot="${t}">${ids.length? ids.map(id=>`<button type="button" class="grip" data-drag="${id}" aria-label="Move ${esc(client(id).name)}">${GRIP}</button><b>${esc(client(id).name)}</b><button type="button" class="x" data-unpin="${id}" aria-label="Unfix ${esc(client(id).name)}" title="Unfix time">×</button>`).join("") : "Drop a client here"}</div></li>`; }).join("");
+  const autoAt={}, busyRanges=[];
+  if(r) p.ids.forEach(id=>{ const st=r.stops[id]; if(!st) return; busyRanges.push([st.start, st.end]); if(!p.pins[id]) (autoAt[hhmm(st.start)] ||= []).push(id); });
+  const clash=t=>{ const sec=toMin(t)*60; return busyRanges.some(([a,b2])=>sec>a-15*60 && sec<b2); };
+  const times=new Set(ddSlotTimes(p).filter(t=>!r || byTime[t] || !clash(t))); Object.keys(autoAt).forEach(t=>times.add(t));
+  const row=(id,t,fixed)=>{ const c=client(id), st=r&&r.stops[id];
+    return `<button type="button" class="grip" data-drag="${id}" aria-label="Move ${esc(c.name)}">${GRIP}</button><b>${esc(c.name)}</b>${c.zone?" "+zoneChip(c.zone):""}`
+      +(st&&st.late?` <span class="small" style="color:var(--bad)">can't make it, earliest ${fmtTime(st.start/60)}</span>`:"")
+      +(fixed?`<span class="tag">📌 Fixed</span><button type="button" class="x" data-unpin="${id}" aria-label="Unfix ${esc(c.name)}" title="Unfix time">×</button>`
+             :`<button type="button" class="btn link small fixbtn" data-fix="${id}" data-at="${t}" title="Keep ${esc(c.name)} at this time">Fix here</button>`); };
+  const leaveRow = r&&p.ids.length ? `<li class="edge" data-k="${hhmm(r.leave)}"><span class="t">${fmtTime(r.leave/60)}</span><span class="muted small">Leave ${esc(r.base)}</span></li>` : "";
+  const backRow = r&&r.ret&&p.ids.length ? `<li class="edge" data-k="${hhmm(r.back)}~"><span class="t">${fmtTime(r.back/60)}</span><span class="muted small">Home · ${fmtDur(r.drive)} driving, ${Math.round(r.dist/1000)} km</span></li>` : "";
+  const slotRows=[...times].map(t=>{ const fixed=byTime[t]||[], auto=autoAt[t]||[];
+    const cls=fixed.length?" full":auto.length?" full auto":"";
+    return `<li data-k="${t}"><span class="t">${fmtTime(toMin(t))}</span><div class="drop${cls}" data-slot="${t}">${fixed.length||auto.length? fixed.map(id=>row(id,t,true)).concat(auto.map(id=>row(id,t,false))).join("") : "Drop a client here"}</div></li>`; });
+  // Leave and Home rows sit in time order among the slots
+  $("#ddSlots").innerHTML=[leaveRow,backRow,...slotRows].filter(Boolean).map(h=>[h.match(/data-k="([^"]*)"/)[1],h]).sort((a,b2)=>a[0]<b2[0]?-1:a[0]>b2[0]?1:0).map(x=>x[1]).join("");
   const free=p.ids.filter(id=>!p.pins[id]).length;
-  $("#ddFree").textContent=p.ids.length?`${free} to fit in around ${Object.keys(byTime).length?"them":"the day"}`:"";
-  // Route
-  $("#ddRoute").innerHTML = r && p.ids.length ? `<ol class="ddroute"><li class="muted"><span class="t">${fmtTime(r.leave/60)}</span>Leave ${esc(r.base)}</li>${p.ids.map(id=>{ const s=r.stops[id]; return s?`<li${s.late?' style="color:var(--bad)"':""}><span class="t">${fmtTime(s.start/60)}</span><b>${esc(client(id).name)}</b>${p.pins[id]?" 📌":""}${s.late?" (can't make fixed time)":""}</li>`:""; }).join("")}${r.ret?`<li class="muted"><span class="t">${fmtTime(r.back/60)}</span>Home · ${fmtDur(r.drive)} driving, ${Math.round(r.dist/1000)} km</li>`:""}</ol>`
-    : (p.result&&p.stale&&p.ids.length ? `<p class="muted small" style="margin:0">Changed since the last route. Press Find most efficient route to update it.</p>` : "");
+  $("#ddFree").textContent=r&&p.ids.length?"Best order filled in":p.ids.length?`${free} to fit in around ${Object.keys(byTime).length?"them":"the day"}`:"";
+  $("#ddRoute").innerHTML = p.result&&p.stale&&p.ids.length ? `<p class="muted small" style="margin:0">Changed since the last route. Press Find most efficient route to update the times.</p>` : "";
   $("#ddGo").disabled=!p.ids.length||ddBusy; $("#ddOpen").disabled=!p.ids.length; $("#ddClear").hidden=!p.ids.length && !p.zone;
   $("#ddGo").textContent=ddBusy?"Finding route…":"Find most efficient route";
 }
@@ -2671,7 +2689,7 @@ $("#ddClients").addEventListener("change", e=>{ const id=e.target.dataset.ddon; 
   if(e.target.checked){ addToDay(ddDate,id); const c=client(id); if(!p.zone && c.zone) p.zone=c.zone; }
   else { p.ids=p.ids.filter(x=>x!==id); delete p.pins[id]; delete p.booked[id]; if(!p.ids.length) p.result=null; }
   ddChanged(p); });
-$("#ddSlots").addEventListener("click", e=>{ const b=e.target.closest("[data-unpin]"); if(!b) return; const p=dayPlan(ddDate); delete p.pins[b.dataset.unpin]; ddChanged(p); });
+$("#ddSlots").addEventListener("click", e=>{ const f=e.target.closest("[data-fix]"); if(f){ const p=dayPlan(ddDate); p.pins[f.dataset.fix]=f.dataset.at; ddChanged(p); return; } const b=e.target.closest("[data-unpin]"); if(!b) return; const p=dayPlan(ddDate); delete p.pins[b.dataset.unpin]; ddChanged(p); });
 // Drag a client (from the list or another slot) onto a time slot
 let ddDrag=null;
 $("#ddForm").addEventListener("pointerdown", e=>{
