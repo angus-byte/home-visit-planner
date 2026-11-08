@@ -85,6 +85,8 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);
 input[type=checkbox]{accent-color:var(--accent);width:18px;height:18px;cursor:pointer}
 textarea{resize:vertical;min-height:72px}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.ddtimes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:560px){.ddtimes{grid-template-columns:1fr 1fr}.ddtimes>label:first-child{grid-column:1/-1}}
 .banner{border-radius:var(--r-sm);padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid transparent}
 .banner.info{background:var(--accent-soft);border-color:#c9e6e8}
 .banner.warn{background:var(--warn-soft);border-color:#f6dfb3;color:var(--ink)}
@@ -642,7 +644,12 @@ nav.steps button{border-radius:999px}
     <div class="row spread"><h2 style="font-size:1.25rem" id="ddTitle">Day</h2><span class="muted small" id="ddSum"></span></div>
     <div class="ddcols">
       <div class="ddpane">
-        <label class="f">1. Zone<select id="ddZone"></select></label>
+        <div class="grid3 ddtimes">
+          <label class="f">1. Zone<select id="ddZone"></select></label>
+          <label class="f">Start<input type="time" id="ddStart" step="300"></label>
+          <label class="f">Finish<input type="time" id="ddEnd" step="300"></label>
+        </div>
+        <p class="muted small" style="margin:-6px 0 0" id="ddTimesNote"></p>
         <div class="row spread small"><b>2. Tick who you're seeing</b><label class="row" style="gap:6px;flex-wrap:nowrap"><input type="checkbox" id="ddAll"> All zones</label></div>
         <input type="search" id="ddSearch" placeholder="Search name or suburb" aria-label="Search clients">
         <ul id="ddClients" class="ddclients"></ul>
@@ -2093,6 +2100,12 @@ function dayPlan(date=S.dayDate){
   p.pins ||= {}; p.booked ||= {}; p.ids=p.ids.filter(id=>S.clients.some(c=>c.id===id));
   return p;
 }
+// A day's start and finish: its own times if set in the day pop-up or Plan a day, otherwise the usual hours on Home.
+function dayTimes(p){ const u=usual(); return {first:p.start||u.start||DAY_DEF.first, end:p.end||u.end||DAY_DEF.end}; }
+function setDayTimes(p, first, end){ const u=usual();
+  if(first) { if(first===u.start) delete p.start; else p.start=first; }
+  if(end) { if(end===u.end) delete p.end; else p.end=end; }
+  if(p.result) p.stale=true; }
 function addToDay(date, id, booked){
   const p=dayPlan(date); if(!p.ids.includes(id)){ p.ids.push(id); if(p.result) p.stale=true; }
   if(booked) p.booked[id]=booked;
@@ -2192,7 +2205,7 @@ async function computeDay(mode){   // mode "optimise" finds the best order; "kee
     }
     prog("Finding the best order…",0.93); await sleep(20);
     const o={n:use.length, durAt:mx.durAt, visitSec:cfg.apptMin*60, gapSec:cfg.packMin*60, roundSec:(+cfg.roundMin||0)*60,
-             startSec:toMin(cfg.first)*60, endSec:toMin(cfg.end)*60, pins:use.map(c=>p.pins[c.id]?toMin(p.pins[c.id])*60:null), returnHome:st.returnHome};
+             startSec:toMin(dayTimes(p).first)*60, endSec:toMin(dayTimes(p).end)*60, pins:use.map(c=>p.pins[c.id]?toMin(p.pins[c.id])*60:null), returnHome:st.returnHome};
     const cur=p.ids.map(id=>use.findIndex(c=>c.id===id)).filter(i=>i>=0);
     const r = mode==="keep" ? DaySolver.evaluate(cur,o) : DaySolver.solve(o);
     const busy=t=>traffic && GeoData.congestion(t)>=0.3;
@@ -2217,7 +2230,7 @@ const GRIP=`<svg width="14" height="18" viewBox="0 0 14 18" aria-hidden="true"><
 const PIN=`<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 1.5h6l-1 4.5 2.5 2.5v1.5h-4V15L8 15.5 7.5 15v-5h-4V8.5L6 6z" fill="currentColor"/></svg>`;
 function renderDay(){
   const st=S.settings, cfg=dayCfg(), date=S.dayDate, p=dayPlan(date), r=p.result;
-  $("#dDate").value=date; $("#dStart").value=cfg.first; $("#dEnd").value=cfg.end; $("#dAppt").value=cfg.apptMin; $("#dPack").value=cfg.packMin; $("#dRound").value=String(cfg.roundMin);
+  $("#dDate").value=date; $("#dStart").value=dayTimes(p).first; $("#dEnd").value=dayTimes(p).end; $("#dAppt").value=cfg.apptMin; $("#dPack").value=cfg.packMin; $("#dRound").value=String(cfg.roundMin);
   $("#dReturn").checked=st.returnHome; $("#dBase").textContent=st.baseAddr||"no address yet";
   const zs=zonesOf(); if(p.zone && !zs.includes(p.zone)) zs.push(p.zone);
   $("#dZone").innerHTML=`<option value="">${zs.length?"Any zone":"No zones yet (set them up in Clients, Zones)"}</option>`+zs.map(z=>`<option${z===p.zone?" selected":""}>${esc(z)}</option>`).join("");
@@ -2233,7 +2246,7 @@ function renderDay(){
     else if(p.manual) notes.push(`<div class="banner info"><span style="flex:1">You've set this order by hand, so times follow it as is.</span><button class="btn" data-dact="optimise">Optimise again</button></div>`);
     const late=p.ids.filter(id=>r.stops[id]&&r.stops[id].late);
     if(late.length && !p.stale) notes.push(`<div class="banner bad">${late.map(id=>esc(client(id).name)).join(", ")} can't be reached by ${late.length===1?"their fixed time":"their fixed times"}. Try a later time, move ${late.length===1?"them":"them"} in the list, or remove someone.</div>`);
-    if(r.over>60 && !p.stale) notes.push(`<div class="banner warn">The day runs past your finish time of ${fmtTime(toMin(cfg.end))} by ${fmtDur(r.over)}.</div>`);
+    if(r.over>60 && !p.stale) notes.push(`<div class="banner warn">The day runs past your finish time of ${fmtTime(toMin(dayTimes(p).end))} by ${fmtDur(r.over)}.</div>`);
     if(r.notFound.length) notes.push(`<div class="banner bad">Couldn't find ${r.notFound.map(id=>esc(client(id).name)).join(", ")} on the map, so they're left at the bottom without a time. Check the address in the client list.</div>`);
     if(r.approx) notes.push(`<div class="banner warn">${r.approx===1?"One address":r.approx+" addresses"} could only be matched to the suburb, so drive times there are rough.</div>`);
     if(r.estimated) notes.push(`<div class="banner warn">Drive times are estimated from straight-line distance because the road map didn't load.</div>`);
@@ -2288,7 +2301,7 @@ $("#v-day").addEventListener("change", e=>{
   if(t.dataset.pin){ setPin(t.dataset.pin, t.value); return; }
   if(t.id==="dReturn"){ S.settings.returnHome=t.checked; save(); retimeDay(); return; }
   if(["dStart","dEnd","dAppt","dPack","dRound"].includes(t.id)){
-    cfg.first=$("#dStart").value||DAY_DEF.first; cfg.end=$("#dEnd").value||DAY_DEF.end;
+    setDayTimes(p, $("#dStart").value, $("#dEnd").value);
     cfg.apptMin=Math.max(5,+$("#dAppt").value||DAY_DEF.apptMin); cfg.packMin=Math.max(0,+$("#dPack").value||0); cfg.roundMin=+$("#dRound").value||0;
     save(); retimeDay();
   }
@@ -2438,8 +2451,8 @@ $("#calNext").addEventListener("click", ()=>{ S.calMonth=monthAdd(calMonth(),1);
 let ddDate=null, ddBusy=false;
 function openDayDlg(date){ ddDate=date; $("#ddSearch").value=""; $("#ddAll").checked=false; $("#ddMsg").hidden=true; renderDayDlg(); $("#dlgDay").showModal(); }
 function ddSlotTimes(p){
-  const cfg=dayCfg(), step=Math.max(5,(+cfg.apptMin||30)+(+cfg.packMin||0)), out=new Set();
-  for(let m=toMin(cfg.first); m+(+cfg.apptMin||30)<=toMin(cfg.end); m+=step) out.add(hhmm(m*60));
+  const cfg=dayCfg(), tm=dayTimes(p), step=Math.max(5,(+cfg.apptMin||30)+(+cfg.packMin||0)), out=new Set();
+  for(let m=toMin(tm.first); m+(+cfg.apptMin||30)<=toMin(tm.end); m+=step) out.add(hhmm(m*60));
   Object.values(p.pins).forEach(t=>out.add(t));
   return [...out].sort();
 }
@@ -2448,6 +2461,8 @@ function renderDayDlg(){
   const p=dayPlan(ddDate), r=p.result&&!p.stale?p.result:null;
   $("#ddTitle").textContent=dayLabel(ddDate,{weekday:"long",day:"numeric",month:"long",year:"numeric"});
   $("#ddZone").innerHTML=`<option value="">Any zone</option>`+zonesOf().map(z=>`<option${z===p.zone?" selected":""}>${esc(z)}</option>`).join("")+`<option value="__add">+ Add a zone…</option>`;
+  const tm=dayTimes(p), u=usual(); $("#ddStart").value=tm.first; $("#ddEnd").value=tm.end;
+  $("#ddTimesNote").innerHTML=(p.start||p.end)?`Own hours for this day. <button type="button" class="btn link" id="ddTimesReset">Use Home hours (${fmtTime(toMin(u.start))}–${fmtTime(toMin(u.end))})</button>`:`Your usual hours from <button type="button" class="btn link" data-go="home">Home</button>.`;
   $("#ddSum").textContent=p.ids.length?`${p.ids.length} visit${p.ids.length===1?"":"s"}`:"No visits yet";
   // Clients: the day's zone (unless "All zones"), plus anyone already on the day
   const q=$("#ddSearch").value.trim().toLowerCase(), all=$("#ddAll").checked||!p.zone;
@@ -2500,6 +2515,10 @@ function ddDrop(cancel){
 }
 $("#ddForm").addEventListener("pointerup", ()=>ddDrop(false));
 $("#ddForm").addEventListener("pointercancel", ()=>ddDrop(true));
+$("#ddStart").addEventListener("change", ()=>{ const p=dayPlan(ddDate); setDayTimes(p, $("#ddStart").value, null); ddChanged(p); });
+$("#ddEnd").addEventListener("change", ()=>{ const p=dayPlan(ddDate); setDayTimes(p, null, $("#ddEnd").value); ddChanged(p); });
+$("#ddTimesNote").addEventListener("click", e=>{ if(e.target.id==="ddTimesReset"){ const p=dayPlan(ddDate); delete p.start; delete p.end; if(p.result) p.stale=true; ddChanged(p); }
+  else if(e.target.dataset.go){ $("#dlgDay").close(); } });
 $("#ddZone").addEventListener("change", e=>{ const p=dayPlan(ddDate);
   if(e.target.value==="__add"){ e.target.value=p.zone||""; openZones(null); $("#dlgZone").addEventListener("close", ()=>{ if($("#dlgDay").open) renderDayDlg(); }, {once:true}); return; }
   p.zone=e.target.value; $("#ddAll").checked=false; save(); renderDayDlg(); renderCal(); });
