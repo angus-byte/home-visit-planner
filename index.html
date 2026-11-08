@@ -1722,9 +1722,14 @@ function needsBooking(){
   const rank=x=>x.over?0:x.never?1:2;   // overdue, then never booked, then due soon
   return out.sort((a,b)=>rank(a)-rank(b) || a.due.localeCompare(b.due) || a.c.name.localeCompare(b.c.name));
 }
+/* A client fixed (pinned) to a time on their last visit keeps that weekday and time when rebooked. */
+function lastPin(id){ const bk=bookings(id), d=bk[bk.length-1], t=d&&S.dayPlans[d].pins[id]; return t?{date:d,time:t}:null; }
+const wdOf=d=>new Date(d+"T00:00:00").getDay();
 function bookDayFor(c, due){
   const today=todayIso(), u=usual(); let from=due<today?today:due;
   const days=[...Array(70)].map((_,i)=>addDays(from,i));
+  const lp=lastPin(c.id);
+  if(lp) return days.find(d=>wdOf(d)===wdOf(lp.date));
   const zoneDay=c.zone && days.find(d=>S.dayPlans[d] && S.dayPlans[d].zone===c.zone);
   if(zoneDay) return zoneDay;
   return days.find(d=>u.days[DAY_KEYS[(new Date(d+"T00:00:00").getDay()+6)%7]]) || from;
@@ -1740,7 +1745,8 @@ function renderNeeds(){
   $("#needsList").innerHTML=list.length? list.slice(0,60).map(x=>{ const c=x.c;
     const when = x.never ? `<span class="when never">Not booked yet</span>`
       : `<span class="when${x.over?" over":""}">${x.over?"Overdue since":"Due"} ${esc(fmt(x.due))} · last ${esc(fmt(x.last))}</span>`;
-    return `<div class="nb"><div class="who"><b>${esc(c.name)}</b>${c.zone?" "+zoneChip(c.zone):""} <span class="small muted">${+c.every?esc(+c.every===1?"Weekly":"Every "+c.every+" weeks"):"As needed"}</span><br>${when}</div>
+    const lp=!x.never&&lastPin(c.id), fixed=lp?`<br><span class="small muted">📌 ${esc(dayLabel(lp.date,{weekday:"long"}))}s at ${esc(fmtTime(toMin(lp.time)))}</span>`:"";
+    return `<div class="nb"><div class="who"><b>${esc(c.name)}</b>${c.zone?" "+zoneChip(c.zone):""} <span class="small muted">${+c.every?esc(+c.every===1?"Weekly":"Every "+c.every+" weeks"):"As needed"}</span><br>${when}${fixed}</div>
       <button type="button" class="btn" data-book="${c.id}" data-due="${x.due}">Book</button></div>`; }).join("")
     : `<p class="muted small" style="margin:0">${all.length?"No one in this zone needs booking.":"Everyone is booked in. Nice."}</p>`;
 }
@@ -1749,7 +1755,9 @@ $("#needsList").addEventListener("click", e=>{ const b=e.target.closest("[data-b
   const c=S.clients.find(x=>x.id===b.dataset.book); if(!c) return;
   const d=bookDayFor(c, b.dataset.due), p=dayPlan(d);
   if(!p.zone && c.zone) p.zone=c.zone;
-  addToDay(d, c.id); save(); openDayDlg(d); });
+  const lp=lastPin(c.id); addToDay(d, c.id);
+  if(lp && !Object.values(p.pins).includes(lp.time)) p.pins[c.id]=lp.time;
+  save(); openDayDlg(d); });
 let homeWk=0;   // weeks away from this week, for Home's week viewer
 function renderHomeWeek(){
   const today=todayIso(), d=new Date(today+"T00:00:00"); d.setDate(d.getDate()-((d.getDay()+6)%7)+homeWk*7);
