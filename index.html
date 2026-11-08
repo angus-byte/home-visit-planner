@@ -223,7 +223,16 @@ details.card summary{cursor:pointer;font-weight:600}
 .drow .ctl .rm{width:38px;height:38px;border-radius:50%;border:0;background:none;cursor:pointer;color:var(--muted);font-size:1.3rem;line-height:1}
 .drow .ctl .rm:hover{background:var(--bad-soft);color:var(--bad)}
 .drow .warn{grid-column:3/-1;font-size:.8rem;color:var(--bad);font-weight:600}
-.chip.zone{background:#eef3e6;color:#3d6b12}
+.chip.zone{--zc:#5c6b7a;background:color-mix(in srgb,var(--zc) 13%,#fff);color:color-mix(in srgb,var(--zc) 80%,#000);display:inline-flex;align-items:center;gap:5px}
+.chip.zone i{width:8px;height:8px;border-radius:50%;background:var(--zc)}
+.zsel{display:inline-block}
+.zsel select{min-height:34px;padding:4px 28px 4px 12px;font-size:.85rem;font-weight:600;border-radius:999px;width:auto;max-width:170px;background-color:color-mix(in srgb,var(--zc) 14%,#fff);border-color:color-mix(in srgb,var(--zc) 45%,var(--line-strong));color:color-mix(in srgb,var(--zc) 70%,var(--ink))}
+#dlgZone .zrow{display:grid;grid-template-columns:44px 1fr 70px 38px;gap:8px;align-items:center}
+#dlgZone input[type=color]{width:44px;height:40px;padding:2px;border:1px solid var(--line-strong);border-radius:10px;background:#fff;cursor:pointer}
+#dlgZone .rm{width:38px;height:38px;border-radius:50%;border:0;background:none;cursor:pointer;color:var(--muted);font-size:1.3rem}
+#dlgZone .rm:hover{background:var(--bad-soft);color:var(--bad)}
+#dlgZone .sw{width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--line-strong);cursor:pointer}
+#dlgZone .sw[aria-pressed="true"]{box-shadow:0 0 0 2px var(--ink)}
 #dAdd{padding-right:40px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%235f7089' stroke-width='1.8'/%3E%3C/svg%3E") no-repeat right 14px center}
 #dAdd::-webkit-search-cancel-button{display:none}
 @media (max-width:640px){
@@ -384,6 +393,7 @@ nav.steps button{border-radius:999px}
       <p class="muted" style="margin:4px 0 0">Import once, then tick who you're seeing each week.</p>
     </div>
     <div class="row noprint">
+      <button class="btn" id="btnZones">Zones</button>
       <button class="btn green" id="btnCliniko">Import from Cliniko</button>
       <details class="more" id="moreAdd">
         <summary class="btn">More</summary>
@@ -407,7 +417,7 @@ nav.steps button{border-radius:999px}
   </div>
   <div class="tablewrap">
     <table>
-      <thead><tr><th style="width:40px"><input type="checkbox" id="selAll" aria-label="Select all shown"></th><th>Name</th><th>Address</th><th class="hide-sm">Phone</th><th>Visit</th><th class="hide-sm">Days</th><th>Map</th><th></th></tr></thead>
+      <thead><tr><th style="width:40px"><input type="checkbox" id="selAll" aria-label="Select all shown"></th><th>Name</th><th>Address</th><th>Zone</th><th class="hide-sm">Phone</th><th>Visit</th><th class="hide-sm">Days</th><th>Map</th><th></th></tr></thead>
       <tbody id="clientRows"></tbody>
     </table>
   </div>
@@ -545,10 +555,9 @@ nav.steps button{border-radius:999px}
       <label class="f">Parent / guardian<input type="text" id="cParent"></label>
       <label class="f">Visit length (min)<input type="number" id="cLen" min="10" max="240" step="5" value="60"></label>
       <label class="f">Available days<input type="text" id="cDays" placeholder="Any day, or e.g. Mon, Wed"></label>
-      <label class="f">Zone<input type="text" id="cZone" list="zoneList" placeholder="e.g. Zone 1 or North"></label>
+      <label class="f">Zone<select id="cZone"></select></label>
       <label class="f">How often<select id="cEvery"><option value="0">When I tick them</option><option value="1">Every week</option><option value="2">Every 2 weeks</option><option value="3">Every 3 weeks</option><option value="4">Every 4 weeks</option></select></label>
     </div>
-    <datalist id="zoneList"></datalist>
     <label class="f">Notes<textarea id="cNotes"></textarea></label>
     <div class="row spread">
       <button type="button" class="btn danger" id="cDelete">Delete client</button>
@@ -558,6 +567,24 @@ nav.steps button{border-radius:999px}
       <span style="flex:1">Delete this client permanently?</span>
       <button type="button" class="btn danger" id="cDeleteYes">Yes, delete</button>
     </div>
+  </form>
+</dialog>
+
+<dialog id="dlgZone">
+  <form method="dialog" id="zoneForm" style="display:grid;gap:14px;min-width:min(440px,86vw)">
+    <h2 style="font-size:1.25rem">Zones</h2>
+    <p class="muted small" style="margin:0">Name your areas however you like and give each a colour. Changes save as you go.</p>
+    <div id="zRows" style="display:grid;gap:8px"></div>
+    <div style="display:grid;gap:8px;border-top:1px solid var(--line);padding-top:14px">
+      <b class="small">Add a zone</b>
+      <div class="row" style="flex-wrap:nowrap">
+        <input type="color" id="zNewCol" value="#385e93" aria-label="New zone colour" style="width:44px;height:44px;padding:2px;border:1px solid var(--line-strong);border-radius:10px;flex:none">
+        <input type="text" id="zNewName" placeholder="e.g. Northern suburbs" aria-label="New zone name">
+        <button type="button" class="btn primary" id="zAdd">Add</button>
+      </div>
+      <div class="row" id="zSwatches" style="gap:8px"></div>
+    </div>
+    <div class="row" style="justify-content:flex-end"><button type="submit" class="btn">Done</button></div>
   </form>
 </dialog>
 
@@ -1114,14 +1141,15 @@ function renderClients(){
   $("#clientRows").innerHTML = list.length ? list.map(c=>`
     <tr>
       <td><input type="checkbox" data-sel="${c.id}" ${c.selected?"checked":""} aria-label="See ${esc(c.name)} this week"></td>
-      <td><b>${esc(c.name)}</b>${c.example?' <span class="chip ex">Example</span>':''}${+c.every?` <span class="chip rep">${EVERY[c.every]}</span>`:''}${c.zone?` <span class="chip zone">${esc(c.zone)}</span>`:''}${c.notes&&!c.example?`<div class="muted small">${esc(c.notes)}</div>`:''}</td>
+      <td><b>${esc(c.name)}</b>${c.example?' <span class="chip ex">Example</span>':''}${+c.every?` <span class="chip rep">${EVERY[c.every]}</span>`:''}${c.notes&&!c.example?`<div class="muted small">${esc(c.notes)}</div>`:''}</td>
       <td>${esc(c.address)}</td>
+      <td>${zoneSelect(c)}</td>
       <td class="hide-sm num">${esc(c.phone)}</td>
       <td class="num">${c.visitMin} min</td>
       <td class="hide-sm">${c.days.length? esc(c.days.join(", ")) : '<span class="muted">Any</span>'}</td>
       <td>${c.geo==="ok"?'<span class="chip ok">Found</span>': c.geo==="street"?'<span class="chip ok">Street</span>': c.geo==="approx"?'<span class="chip">Suburb only</span>': c.geo==="fail"?'<span class="chip bad">Not found</span>':'<span class="chip">Pending</span>'}</td>
       <td><button class="btn link" data-edit="${c.id}">Edit</button></td>
-    </tr>`).join("") : `<tr><td colspan="8" class="empty">${S.clients.length?"No clients match that search.":"No clients yet. Import a spreadsheet or add one."}</td></tr>`;
+    </tr>`).join("") : `<tr><td colspan="9" class="empty">${S.clients.length?"No clients match that search.":"No clients yet. Import a spreadsheet or add one."}</td></tr>`;
 }
 $("#search").addEventListener("input", renderClients);
 $("#clientRows").addEventListener("change", e=>{ const id=e.target.dataset.sel; if(!id) return; const c=S.clients.find(x=>x.id===id); c.selected=e.target.checked; stashWeek(); repeatFrom(c,S.wk,c.selected); save(); renderClients(); });
@@ -1137,7 +1165,7 @@ function openDlg(c){
   $("#dlgTitle").textContent = c? "Edit client":"Add client";
   $("#cName").value=c?.name||""; $("#cAddr").value=c?.address||""; $("#cPhone").value=c?.phone||""; $("#cEmail").value=c?.email||"";
   $("#cParent").value=c?.parent||""; $("#cLen").value=c?.visitMin||60; $("#cDays").value=c?.days?.join(", ")||""; $("#cNotes").value=c?.notes||""; $("#cEvery").value=String(+c?.every||0);
-  $("#cZone").value=c?.zone||""; $("#zoneList").innerHTML=zonesOf().map(z=>`<option value="${esc(z)}">`).join("");
+  $("#cZone").innerHTML=zoneOptions(c?.zone||""); $("#cZone").value=c?.zone||"";
   $("#cDelete").hidden=!c; $("#delConfirm").hidden=true;
   $("#dlg").showModal();
 }
@@ -1150,7 +1178,7 @@ $("#clientForm").addEventListener("submit", e=>{
   if(!addr||!name) return;
   const c = editing || {id:uid(), selected:true, geo:"pending"};
   if(c.address!==addr){ c.geo="pending"; c.lat=c.lng=null; }
-  Object.assign(c,{name,address:addr,phone:$("#cPhone").value.trim(),email:$("#cEmail").value.trim(),parent:$("#cParent").value.trim(),visitMin:Math.max(10,+$("#cLen").value||60),days:parseDays($("#cDays").value),notes:$("#cNotes").value.trim(),zone:$("#cZone").value.trim(),example:false});
+  Object.assign(c,{name,address:addr,phone:$("#cPhone").value.trim(),email:$("#cEmail").value.trim(),parent:$("#cParent").value.trim(),visitMin:Math.max(10,+$("#cLen").value||60),days:parseDays($("#cDays").value),notes:$("#cNotes").value.trim(),zone:$("#cZone").value==="__add"?(c.zone||""):$("#cZone").value,example:false});
   const every=+$("#cEvery").value||0, changed=(+c.every||0)!==every; c.every=every;
   if(!editing) S.clients.push(c);
   if(changed){ if(!editing) stashWeek(); relayRepeat(c); }
@@ -1968,7 +1996,38 @@ function addToDay(date, id, booked){
   const p=dayPlan(date); if(!p.ids.includes(id)){ p.ids.push(id); if(p.result) p.stale=true; }
   if(booked) p.booked[id]=booked;
 }
-const zonesOf = () => [...new Set(S.clients.map(c=>(c.zone||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+/* Zones: named by the user, each with a colour. Kept in S.settings.zones; any zone name found on a client is added too. */
+const ZONE_COLOURS=["#385e93","#2b8a3e","#d9480f","#6741d9","#c2255c","#0b8a8f","#a07d00","#5c6b7a"];
+function zoneList(){
+  const st=S.settings; if(!Array.isArray(st.zones)) st.zones=[];
+  S.clients.forEach(c=>{ const z=(c.zone||"").trim(); if(z && !st.zones.some(x=>x.name===z)) st.zones.push({name:z, colour:ZONE_COLOURS[st.zones.length%ZONE_COLOURS.length]}); });
+  return st.zones;
+}
+const zonesOf = () => zoneList().map(z=>z.name);
+const zoneColour = n => (zoneList().find(z=>z.name===n)||{}).colour || "#5c6b7a";
+const zoneChip = n => `<span class="chip zone" style="--zc:${esc(zoneColour(n))}"><i></i>${esc(n)}</span>`;
+const zoneOptions = cur => `<option value="">No zone</option>`+zonesOf().map(z=>`<option value="${esc(z)}"${z===cur?" selected":""}>${esc(z)}</option>`).join("")+`<option value="__add">+ Add a zone…</option>`;
+const zoneSelect = c => `<span class="zsel" style="--zc:${c.zone?esc(zoneColour(c.zone)):"transparent"}"><select data-zone="${c.id}" aria-label="Zone for ${esc(c.name)}">${zoneOptions(c.zone||"")}</select></span>`;
+let zoneFor=null;   // client (or "dlg" for the edit dialog) waiting for a newly added zone
+function openZones(forWho){
+  zoneFor=forWho||null; renderZones(); $("#zNewName").value=""; $("#dlgZone").showModal(); if(forWho) $("#zNewName").focus();
+}
+function renderZones(){
+  const zs=zoneList();
+  $("#zRows").innerHTML = zs.length ? zs.map((z,i)=>{ const n=S.clients.filter(c=>c.zone===z.name).length; return `<div class="zrow">
+      <input type="color" value="${esc(z.colour)}" data-zcol="${i}" aria-label="Colour for ${esc(z.name)}">
+      <input type="text" value="${esc(z.name)}" data-zname="${i}" aria-label="Zone name">
+      <span class="muted small">${n} client${n===1?"":"s"}</span>
+      <button type="button" class="rm" data-zdel="${i}" title="Delete zone" aria-label="Delete ${esc(z.name)}">×</button></div>`; }).join("")
+    : `<p class="muted small" style="margin:0">No zones yet. Add your first one below.</p>`;
+  $("#zSwatches").innerHTML=ZONE_COLOURS.map(c=>`<button type="button" class="sw" data-sw="${c}" style="background:${c}" aria-label="Colour ${c}" aria-pressed="${c===$("#zNewCol").value}"></button>`).join("");
+}
+function renameZone(from, to){
+  S.clients.forEach(c=>{ if(c.zone===from) c.zone=to; });
+  Object.values(S.dayPlans||{}).forEach(p=>{ if(p.zone===from) p.zone=to; });
+}
+function afterZones(){ save(); renderClients(); if(!$("#v-day").hidden) renderDay(); }
+
 const dayLabel = (iso,opt={weekday:"short",day:"numeric",month:"short"}) => new Date(iso+"T00:00:00").toLocaleDateString("en-AU",opt);
 const hhmm = sec => { const m=Math.round(sec/60); return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); };
 function dayMsg(html,bad){ const b=$("#dMsg"); b.className="banner "+(bad?"bad":"info"); b.innerHTML=`<span style="flex:1">${html}</span>`; b.hidden=!html; }
@@ -2060,7 +2119,7 @@ function renderDay(){
   $("#dDate").value=date; $("#dStart").value=cfg.first; $("#dEnd").value=cfg.end; $("#dAppt").value=cfg.apptMin; $("#dPack").value=cfg.packMin; $("#dRound").value=String(cfg.roundMin);
   $("#dReturn").checked=st.returnHome; $("#dBase").textContent=st.baseAddr||"no address yet";
   const zs=zonesOf(); if(p.zone && !zs.includes(p.zone)) zs.push(p.zone);
-  $("#dZone").innerHTML=`<option value="">${zs.length?"Any zone":"No zones set yet (add them to clients)"}</option>`+zs.map(z=>`<option${z===p.zone?" selected":""}>${esc(z)}</option>`).join("");
+  $("#dZone").innerHTML=`<option value="">${zs.length?"Any zone":"No zones yet (set them up in Clients, Zones)"}</option>`+zs.map(z=>`<option${z===p.zone?" selected":""}>${esc(z)}</option>`).join("");
   // Other days already planned
   const others=Object.keys(S.dayPlans).filter(d=>d!==date && S.dayPlans[d].ids.length && d>=addDays(todayIso(),-7)).sort();
   $("#dSaved").hidden=!others.length;
@@ -2096,7 +2155,7 @@ function renderDay(){
       <button class="grip" type="button" aria-label="Move ${esc(c.name)} (drag, or use the up and down arrow keys)">${GRIP}</button>
       <div class="tm">${timed&&s?fmtTime(s.start/60)+`<small>to ${fmtTime(s.end/60)}</small>`:'<span class="muted">–</span>'}</div>
       <div class="who"><b>${k+1}. ${esc(c.name)}</b>
-        <div class="small">${esc(c.address)}${c.zone?` <span class="chip zone">${esc(c.zone)}</span>`:""}</div>
+        <div class="small">${esc(c.address)}${c.zone?" "+zoneChip(c.zone):""}</div>
         ${c.phone||bk?`<div class="small muted">${esc(c.phone||"")}${c.phone&&bk?" · ":""}${bk?"Booked "+esc(fmtTime(toMin(bk))):""}</div>`:""}
       </div>
       <div class="ctl">
@@ -2159,7 +2218,7 @@ function dAddRender(){
   dAddItems=S.clients.filter(c=>!p.ids.includes(c.id) && words.every(w=>[c.name,c.address,c.zone].join(" ").toLowerCase().includes(w)))
     .sort((a,b)=>(q?(b.name.toLowerCase().startsWith(q))-(a.name.toLowerCase().startsWith(q)):0) || ((b.zone||"")===p.zone)-((a.zone||"")===p.zone) || a.name.localeCompare(b.name)).slice(0,q?8:200);
   if(q && dAddActive<0 && dAddItems.length) dAddActive=0;   // typing highlights the best match so Enter or Tab fills it
-  list.innerHTML=dAddItems.length ? dAddItems.map((c,i)=>`<li role="option" data-i="${i}" aria-selected="${i===dAddActive}"><b>${esc(c.name)}</b>${c.zone?` <span class="chip zone">${esc(c.zone)}</span>`:""}<small style="color:var(--muted);font-weight:400;white-space:normal;text-align:right">${esc(c.address)}</small></li>`).join("")
+  list.innerHTML=dAddItems.length ? dAddItems.map((c,i)=>`<li role="option" data-i="${i}" aria-selected="${i===dAddActive}"><b>${esc(c.name)}</b>${c.zone?" "+zoneChip(c.zone):""}<small style="color:var(--muted);font-weight:400;white-space:normal;text-align:right">${esc(c.address)}</small></li>`).join("")
     : `<li class="note">${q?"No match in your client list. Add new clients on the Clients page.":"Everyone in your client list is already on this day."}</li>`;
   list.hidden=false; $("#dAdd").setAttribute("aria-expanded","true");
   const a=list.querySelector('[aria-selected="true"]'); if(a) a.scrollIntoView({block:"nearest"});
@@ -2208,6 +2267,31 @@ $("#dFile").addEventListener("change", async e=>{
   try{ importRows(await readSheet(f), {date:S.dayDate}); }
   catch(err){ dayMsg(`Couldn't read ${esc(f.name)}. ${esc(err.message)}`, true); }
 });
+
+$("#btnZones").addEventListener("click", ()=>openZones());
+$("#clientRows").addEventListener("change", e=>{ const id=e.target.dataset.zone; if(!id) return; const c=S.clients.find(x=>x.id===id);
+  if(e.target.value==="__add"){ e.target.value=c.zone||""; openZones(c); return; }
+  c.zone=e.target.value; afterZones(); });
+$("#cZone").addEventListener("change", e=>{ if(e.target.value==="__add"){ e.target.value=editing?.zone||""; openZones("dlg"); } });
+$("#zAdd").addEventListener("click", ()=>{
+  const name=$("#zNewName").value.trim(); if(!name){ $("#zNewName").focus(); return; }
+  const zs=zoneList(); if(!zs.some(z=>z.name.toLowerCase()===name.toLowerCase())) zs.push({name, colour:$("#zNewCol").value});
+  const z=zs.find(x=>x.name.toLowerCase()===name.toLowerCase()).name;
+  if(zoneFor==="dlg"){ $("#cZone").innerHTML=zoneOptions(z); $("#cZone").value=z; }
+  else if(zoneFor){ zoneFor.zone=z; }
+  zoneFor=null; $("#zNewName").value=""; $("#zNewCol").value=ZONE_COLOURS[zs.length%ZONE_COLOURS.length];
+  afterZones(); renderZones();
+});
+$("#zNewName").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); $("#zAdd").click(); } });
+$("#zSwatches").addEventListener("click", e=>{ const b=e.target.closest("[data-sw]"); if(!b) return; $("#zNewCol").value=b.dataset.sw; renderZones(); });
+$("#zRows").addEventListener("change", e=>{ const zs=zoneList(), t=e.target;
+  if(t.dataset.zcol!=null){ zs[+t.dataset.zcol].colour=t.value; }
+  if(t.dataset.zname!=null){ const z=zs[+t.dataset.zname], to=t.value.trim(); if(to && !zs.some(x=>x!==z && x.name===to)){ renameZone(z.name,to); z.name=to; } else t.value=z.name; }
+  afterZones(); renderZones(); });
+$("#zRows").addEventListener("click", e=>{ const b=e.target.closest("[data-zdel]"); if(!b) return; const zs=zoneList(), z=zs[+b.dataset.zdel];
+  if(!b.dataset.sure){ b.dataset.sure="1"; b.textContent="?"; b.title="Click again to delete. Clients in this zone are left without one."; return; }
+  renameZone(z.name,""); zs.splice(+b.dataset.zdel,1); afterZones(); renderZones(); });
+$("#dlgZone").addEventListener("close", ()=>{ zoneFor=null; });
 
 /* ---------- Boot ---------- */
 const start=(location.hash||"").slice(1);
