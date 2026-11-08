@@ -46,7 +46,7 @@ nav.steps button:active{transform:scale(.97)}
 nav.steps button[aria-current="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(15,31,38,.1),0 2px 6px rgba(15,31,38,.06)}
 nav.steps .n{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--line);color:var(--muted);font-size:.75rem;font-weight:700;margin-right:6px;font-variant-numeric:tabular-nums}
 nav.steps button[aria-current="true"] .n{background:var(--accent);color:#fff}
-section.view{display:grid;gap:20px}
+section.view{display:grid;gap:20px;grid-template-columns:minmax(0,1fr)}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--shadow-1)}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .spread{justify-content:space-between}
@@ -237,8 +237,30 @@ details.card summary{cursor:pointer;font-weight:600}
 #dlgZone .rm:hover{background:var(--bad-soft);color:var(--bad)}
 #dlgZone .sw{width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--line-strong);cursor:pointer}
 #dlgZone .sw[aria-pressed="true"]{box-shadow:0 0 0 2px var(--ink)}
-#dAdd{padding-right:40px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%235f7089' stroke-width='1.8'/%3E%3C/svg%3E") no-repeat right 14px center}
-#dAdd::-webkit-search-cancel-button{display:none}
+#dAdd,#ddAdd{padding-right:40px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%235f7089' stroke-width='1.8'/%3E%3C/svg%3E") no-repeat right 14px center}
+#dAdd::-webkit-search-cancel-button,#ddAdd::-webkit-search-cancel-button{display:none}
+/* Month calendar */
+.calnav{gap:8px}
+.calnav>.btn{min-width:42px;padding:8px 12px;font-size:1.2rem;line-height:1}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.cal .dow{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);text-align:center;padding:4px 0}
+.cal .cell{--zc:transparent;font:inherit;text-align:left;min-height:112px;padding:8px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--zc) 9%,#fff);cursor:pointer;display:flex;flex-direction:column;gap:4px;color:var(--ink);transition:transform .08s,box-shadow .15s;box-shadow:var(--shadow-1);min-width:0;overflow:hidden}
+.cal .cell:hover{box-shadow:0 4px 14px rgba(15,31,38,.12)}
+.cal .cell:active{transform:scale(.98)}
+.cal .cell.has{border-color:color-mix(in srgb,var(--zc) 50%,var(--line));box-shadow:inset 0 3px 0 var(--zc),var(--shadow-1)}
+.cal .cell.out{opacity:.45}
+.cal .cell.past:not(.has){background:var(--soft)}
+.cal .cell.today .n{background:var(--accent);color:#fff}
+.cal .cell .n{font-weight:700;font-variant-numeric:tabular-nums;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:.9rem}
+.cal .cell .ppl{font-size:.75rem;color:var(--muted);line-height:1.3;overflow:hidden}
+.cal .cell .cnt{font-size:.78rem;font-weight:700}
+.cal .cell .ok{font-size:.7rem;font-weight:700;color:var(--good)}
+.cal .cell .chip.zone{font-size:.68rem;padding:2px 7px;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.ddlist{list-style:none;margin:0;padding:0;display:grid;gap:6px;max-height:44vh;overflow-y:auto}
+.ddlist li{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:8px 12px;border:1px solid var(--line);border-radius:10px;font-size:.92rem}
+.ddlist li .rm{width:34px;height:34px;border-radius:50%;border:0;background:none;cursor:pointer;color:var(--muted);font-size:1.2rem}
+.ddlist li .rm:hover{background:var(--bad-soft);color:var(--bad)}
+@media (max-width:640px){ .cal{gap:3px} .cal .cell{min-height:64px;padding:4px;border-radius:8px} .cal .cell .ppl,.cal .cell .ok{display:none} .cal .cell .chip.zone{font-size:0;padding:0;width:10px;height:10px} .cal .cell .chip.zone i{width:10px;height:10px} .cal .cell .n{width:22px;height:22px;font-size:.8rem} .cal .cell .cnt{font-size:.7rem} .calnav{flex-wrap:nowrap!important} #calMonths{flex-wrap:nowrap!important;overflow-x:auto;flex:1;min-width:0;scrollbar-width:none} #calMonths .chipbtn{flex:none} }
 @media (max-width:640px){
   .drow{grid-template-columns:28px 64px minmax(0,1fr);padding:10px}
   .drow .ctl{grid-column:2/-1;justify-content:flex-end}
@@ -444,9 +466,24 @@ nav.steps button{border-radius:999px}
 
 <!-- WEEK -->
 <section class="view" id="v-week" hidden>
+  <div class="row spread">
+    <div>
+      <h1 id="calTitle">Planner</h1>
+      <p class="muted" style="margin:4px 0 0">Click a day to choose its zone and who you're seeing. Then open it in Plan a day to get the best order and times.</p>
+    </div>
+  </div>
+  <div class="row noprint calnav">
+    <button class="btn" id="calPrev" aria-label="Previous month">‹</button>
+    <div id="calMonths" class="row" role="tablist" aria-label="Months" style="gap:6px"></div>
+    <button class="btn" id="calNext" aria-label="Next month">›</button>
+  </div>
+  <div class="cal" id="cal"></div>
+  <details class="card" id="wkOld">
+  <summary style="cursor:pointer;font-weight:600">Auto-plan a whole week instead <span class="muted small" style="font-weight:400">(the app spreads clients across the week's days for you)</span></summary>
+  <div style="display:grid;gap:20px;margin-top:16px">
   <div class="weektabs noprint" role="tablist" aria-label="Weeks"></div>
   <div>
-    <h1 id="weekTitle">Plan week 1</h1>
+    <h2 id="weekTitle" style="font-size:1.3rem">Plan week 1</h2>
     <p class="muted" style="margin:4px 0 0">Each week can have its own working days, hours and clients.</p>
   </div>
   <div class="card" style="display:grid;gap:14px">
@@ -481,6 +518,8 @@ nav.steps button{border-radius:999px}
     <div id="buildStatus">Working…</div>
     <div class="progress"><i id="buildBar"></i></div>
   </div>
+  </div>
+  </details>
 </section>
 
 <!-- SCHEDULE -->
@@ -571,6 +610,22 @@ nav.steps button{border-radius:999px}
     <div id="delConfirm" class="banner bad" hidden>
       <span style="flex:1">Delete this client permanently?</span>
       <button type="button" class="btn danger" id="cDeleteYes">Yes, delete</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgDay">
+  <form method="dialog" id="ddForm" style="display:grid;gap:14px;min-width:min(520px,88vw)">
+    <div class="row spread"><h2 style="font-size:1.25rem" id="ddTitle">Day</h2><span class="muted small" id="ddSum"></span></div>
+    <label class="f">Zone<select id="ddZone"></select></label>
+    <div class="ac-wrap">
+      <input type="search" id="ddAdd" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="ddAddList" placeholder="Add a client: choose, or start typing a name" autocomplete="off">
+      <ul class="ac-list" id="ddAddList" role="listbox" hidden></ul>
+    </div>
+    <ol id="ddList" class="ddlist"></ol>
+    <div class="row spread">
+      <button type="button" class="btn link danger" id="ddClear">Clear day</button>
+      <div class="row"><button type="submit" class="btn">Done</button><button type="button" class="btn primary" id="ddOpen">Plan route &amp; times</button></div>
     </div>
   </form>
 </dialog>
@@ -1108,7 +1163,7 @@ function go(view){
   $$("nav.steps button").forEach(b=>b.setAttribute("aria-current", b.dataset.go===view));
   if(view==="home") renderHome();
   if(view==="clients") renderClients();
-  if(view==="week") renderWeek();
+  if(view==="week"){ renderCal(); renderWeek(); }
   if(view==="schedule") renderSchedule();
   if(view==="month") renderMonth();
   if(view==="day") renderDay();
@@ -2306,6 +2361,85 @@ $("#zRows").addEventListener("click", e=>{ const b=e.target.closest("[data-zdel]
   if(!b.dataset.sure){ b.dataset.sure="1"; b.textContent="?"; b.title="Click again to delete. Clients in this zone are left without one."; return; }
   renameZone(z.name,""); zs.splice(+b.dataset.zdel,1); afterZones(); renderZones(); });
 $("#dlgZone").addEventListener("close", ()=>{ zoneFor=null; });
+
+/* ---------- Planner: month calendar of day plans (shares S.dayPlans with Plan a day) ---------- */
+const MONTHS_SHOWN=6;
+function calMonth(){ if(!S.calMonth) S.calMonth=todayIso().slice(0,7); return S.calMonth; }
+function monthAdd(ym,n){ const d=new Date(ym+"-01T00:00:00"); d.setMonth(d.getMonth()+n); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
+const monthName=(ym,withYear)=>new Date(ym+"-01T00:00:00").toLocaleDateString("en-AU",withYear?{month:"long",year:"numeric"}:{month:"long"});
+function renderCal(){
+  const ym=calMonth(), first=todayIso().slice(0,7), thisYear=first.slice(0,4);
+  $("#calTitle").textContent="Planner · "+monthName(ym,true);
+  const start=ym<first?ym:first;
+  const months=[...Array(MONTHS_SHOWN)].map((_,i)=>monthAdd(start,i)); if(!months.includes(ym)) months.push(ym);
+  $("#calMonths").innerHTML=months.map(m=>{ const n=Object.keys(S.dayPlans).filter(d=>d.startsWith(m)&&S.dayPlans[d].ids.length).length;
+    return `<button class="chipbtn" role="tab" data-cm="${m}" aria-pressed="${m===ym}" aria-selected="${m===ym}">${esc(monthName(m, m.slice(0,4)!==thisYear))}${n?` <small>${n}</small>`:""}</button>`; }).join("");
+  const d0=new Date(ym+"-01T00:00:00"), lead=(d0.getDay()+6)%7, days=new Date(d0.getFullYear(),d0.getMonth()+1,0).getDate();
+  const cells=Math.ceil((lead+days)/7)*7, today=todayIso();
+  let html=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(k=>`<div class="dow">${k}</div>`).join("");
+  for(let i=0;i<cells;i++){
+    const date=addDays(ym+"-01", i-lead), p=S.dayPlans[date], ids=p?p.ids.filter(id=>S.clients.some(c=>c.id===id)):[];
+    const zc=p&&p.zone?zoneColour(p.zone):"";
+    const timed=p&&p.result&&!p.stale&&ids.length;
+    html+=`<button type="button" class="cell${ids.length?" has":""}${date.slice(0,7)!==ym?" out":""}${date<today?" past":""}${date===today?" today":""}" data-cday="${date}"${zc?` style="--zc:${esc(zc)}"`:""} aria-label="${esc(dayLabel(date,{weekday:"long",day:"numeric",month:"long"}))}${ids.length?`, ${ids.length} visit${ids.length===1?"":"s"}`:""}${p&&p.zone?", "+esc(p.zone):""}">
+      <span class="n">${+date.slice(8)}</span>
+      ${p&&p.zone?zoneChip(p.zone):""}
+      ${ids.length?`<span class="cnt">${ids.length} visit${ids.length===1?"":"s"}</span><span class="ppl">${ids.slice(0,3).map(id=>esc(client(id).name.split(" ")[0])).join(", ")}${ids.length>3?` +${ids.length-3}`:""}</span>`:""}
+      ${timed?`<span class="ok">✓ ${fmtTime(p.result.leave/60)}–${fmtTime(p.result.back/60)}</span>`:""}
+    </button>`;
+  }
+  $("#cal").innerHTML=html;
+}
+$("#calMonths").addEventListener("click", e=>{ const b=e.target.closest("[data-cm]"); if(!b) return; S.calMonth=b.dataset.cm; save(); renderCal(); });
+$("#calPrev").addEventListener("click", ()=>{ S.calMonth=monthAdd(calMonth(),-1); save(); renderCal(); });
+$("#calNext").addEventListener("click", ()=>{ S.calMonth=monthAdd(calMonth(),1); save(); renderCal(); });
+// Day pop-up
+let ddDate=null, ddItems=[], ddActive=-1;
+function openDayDlg(date){ ddDate=date; renderDayDlg(); $("#ddAdd").value=""; $("#ddAddList").hidden=true; $("#dlgDay").showModal(); }
+function renderDayDlg(){
+  const p=dayPlan(ddDate);
+  $("#ddTitle").textContent=dayLabel(ddDate,{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+  $("#ddZone").innerHTML=`<option value="">No zone</option>`+zonesOf().map(z=>`<option${z===p.zone?" selected":""}>${esc(z)}</option>`).join("")+`<option value="__add">+ Add a zone…</option>`;
+  $("#ddSum").textContent=p.ids.length?`${p.ids.length} visit${p.ids.length===1?"":"s"}`:"";
+  $("#ddList").innerHTML=p.ids.length? p.ids.map(id=>{ const c=client(id), s=p.result&&!p.stale&&p.result.stops[id];
+      return `<li><span>${s?`<b style="font-variant-numeric:tabular-nums">${fmtTime(s.start/60)}</b> · `:""}<b>${esc(c.name)}</b>${c.zone?" "+zoneChip(c.zone):""}<span class="muted small" style="display:block">${esc(c.address)}</span></span>
+        <button type="button" class="rm" data-ddrm="${id}" aria-label="Remove ${esc(c.name)}" title="Remove from this day">×</button></li>`; }).join("")
+    : `<li class="muted" style="border-style:dashed">Nobody booked yet. Add clients above.</li>`;
+  $("#ddOpen").disabled=!p.ids.length; $("#ddClear").hidden=!p.ids.length && !p.zone;
+}
+function ddRender(){
+  const q=$("#ddAdd").value.trim().toLowerCase(), p=dayPlan(ddDate), list=$("#ddAddList"), words=q?q.split(/\s+/):[];
+  ddItems=S.clients.filter(c=>!p.ids.includes(c.id) && words.every(w=>[c.name,c.address,c.zone].join(" ").toLowerCase().includes(w)))
+    .sort((a,b)=>(q?(b.name.toLowerCase().startsWith(q))-(a.name.toLowerCase().startsWith(q)):0) || ((b.zone||"")===p.zone)-((a.zone||"")===p.zone) || a.name.localeCompare(b.name)).slice(0,q?8:200);
+  if(q && ddActive<0 && ddItems.length) ddActive=0;
+  list.innerHTML=ddItems.length? ddItems.map((c,i)=>`<li role="option" data-i="${i}" aria-selected="${i===ddActive}"><b>${esc(c.name)}</b>${c.zone?" "+zoneChip(c.zone):""}<small style="color:var(--muted);font-weight:400;white-space:normal;text-align:right">${esc(c.address)}</small></li>`).join("")
+    : `<li class="note">${q?"No match in your client list.":"Everyone in your client list is already on this day."}</li>`;
+  list.hidden=false; $("#ddAdd").setAttribute("aria-expanded","true");
+  const a=list.querySelector('[aria-selected="true"]'); if(a) a.scrollIntoView({block:"nearest"});
+}
+function ddPick(i){ const c=ddItems[i]; if(!c) return; const p=dayPlan(ddDate); addToDay(ddDate,c.id); if(!p.zone && c.zone) p.zone=c.zone; save(); $("#ddAdd").value=""; ddActive=-1; renderDayDlg(); renderCal(); $("#ddAdd").focus(); ddRender(); }
+$("#ddAdd").addEventListener("input", ()=>{ ddActive=-1; ddRender(); });
+$("#ddAdd").addEventListener("focus", ()=>{ ddActive=-1; ddRender(); });
+$("#ddAdd").addEventListener("click", ()=>{ if($("#ddAddList").hidden){ ddActive=-1; ddRender(); } });
+$("#ddAdd").addEventListener("keydown", e=>{
+  const n=ddItems.length;
+  if(e.key==="ArrowDown"||e.key==="ArrowUp"){ e.preventDefault(); if(!n) return; const dn=e.key==="ArrowDown"; ddActive=ddActive<0?(dn?0:n-1):(ddActive+(dn?1:n-1))%n; ddRender(); }
+  else if(e.key==="Enter"){ e.preventDefault(); if(n) ddPick(ddActive<0?0:ddActive); }
+  else if(e.key==="Tab" && !$("#ddAddList").hidden && $("#ddAdd").value.trim() && ddItems[ddActive]){ e.preventDefault(); ddPick(ddActive); }
+  else if(e.key==="Escape" && !$("#ddAddList").hidden){ e.preventDefault(); $("#ddAddList").hidden=true; }
+});
+$("#ddAddList").addEventListener("pointerdown", e=>{ const li=e.target.closest("[data-i]"); if(li){ e.preventDefault(); ddPick(+li.dataset.i); } });
+$("#ddAdd").addEventListener("blur", ()=>setTimeout(()=>{ $("#ddAddList").hidden=true; $("#ddAdd").setAttribute("aria-expanded","false"); },150));
+$("#ddList").addEventListener("click", e=>{ const b=e.target.closest("[data-ddrm]"); if(!b) return; const p=dayPlan(ddDate), id=b.dataset.ddrm;
+  p.ids=p.ids.filter(x=>x!==id); delete p.pins[id]; delete p.booked[id]; if(p.result) p.stale=true; if(!p.ids.length) p.result=null; save(); renderDayDlg(); renderCal(); });
+$("#ddZone").addEventListener("change", e=>{ const p=dayPlan(ddDate);
+  if(e.target.value==="__add"){ e.target.value=p.zone||""; openZones(null); $("#dlgZone").addEventListener("close", ()=>{ if($("#dlgDay").open) renderDayDlg(); }, {once:true}); return; }
+  p.zone=e.target.value; save(); renderDayDlg(); renderCal(); });
+$("#ddClear").addEventListener("click", e=>{ const b=e.currentTarget; if(!b.dataset.sure){ b.dataset.sure="1"; b.textContent="Tap again to clear"; setTimeout(()=>{ delete b.dataset.sure; b.textContent="Clear day"; },3000); return; }
+  delete b.dataset.sure; b.textContent="Clear day"; delete S.dayPlans[ddDate]; save(); renderDayDlg(); renderCal(); });
+$("#ddOpen").addEventListener("click", ()=>{ S.dayDate=ddDate; save(); $("#dlgDay").close(); go("day"); });
+$("#dlgDay").addEventListener("close", ()=>{ Object.keys(S.dayPlans).forEach(d=>{ const q=S.dayPlans[d]; if(!q.ids.length && !q.zone) delete S.dayPlans[d]; }); save(); if(!$("#v-week").hidden) renderCal(); });
+$("#cal").addEventListener("click", e=>{ const c=e.target.closest("[data-cday]"); if(c) openDayDlg(c.dataset.cday); });
 
 /* ---------- Boot ---------- */
 const start=(location.hash||"").slice(1);
