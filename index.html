@@ -360,7 +360,7 @@ nav.steps button{border-radius:999px}
     <div style="display:grid;gap:16px;align-content:start">
       <div class="card" style="display:grid;gap:12px">
         <div class="row spread">
-          <h2 style="font-size:1.2rem;margin:0" id="homeWeekTitle">This week</h2>
+          <h2 style="font-size:1.2rem;margin:0" id="homeWeekTitle">Today</h2>
           <div class="row" id="homeWeekBtns"></div>
         </div>
         <div class="stats" id="homeStats"></div>
@@ -1567,37 +1567,27 @@ function renderHome(){
   if(!st.baseAddr) notes.push(`<div class="banner warn">Add your start and finish address below so drive times can be worked out.</div>`);
   if(!S.clients.length) notes.push(`<div class="banner info"><span style="flex:1">No clients yet. Import your list to get started.</span><button class="btn" data-go="clients">Go to clients</button></div>`);
   const td=sch && sch.days.find(d=>d.date===todayIso() && d.stops.length);
-  if(td) notes.unshift(`<div class="banner info"><span style="flex:1"><b>Today:</b> ${td.stops.length} visit${td.stops.length===1?"":"s"}, leave at ${fmtTime(td.leave)}, done by ${fmtTime(td.end)}.</span><button class="btn primary" data-today="${td.key}">Start today</button></div>`);
+  if(td && !(S.dayPlans&&S.dayPlans[todayIso()]&&S.dayPlans[todayIso()].ids.length)) notes.unshift(`<div class="banner info"><span style="flex:1"><b>Today:</b> ${td.stops.length} visit${td.stops.length===1?"":"s"}, leave at ${fmtTime(td.leave)}, done by ${fmtTime(td.end)}.</span><button class="btn primary" data-today="${td.key}">Start today</button></div>`);
   $("#homeNotice").innerHTML=notes.join("");
-  // Selected week overview
-  const stale=weekStale(w);
-  $("#homeWeekTitle").innerHTML=`Week ${S.wk+1} <span class="muted" style="font-weight:400;font-size:.95rem">${esc(weekLabel(w,{weekday:"short",day:"numeric",month:"short"}))}</span>`;
-  $("#homeWeekBtns").innerHTML = sch
-    ? `${stale?'<button class="btn primary" data-go="week">Rebuild</button>':""}<button class="btn${stale?"":" primary"}" data-go="schedule">Open schedule</button>`
-    : `<button class="btn primary" data-go="week">${w.sel.length?"Plan this week":"Pick clients"}</button>`;
-  if(sch){
-    const visits=sch.days.reduce((a,d)=>a+d.stops.length,0), drive=sch.days.reduce((a,d)=>a+d.driveSec,0), km=sch.days.reduce((a,d)=>a+d.driveM,0);
-    const used=sch.days.filter(d=>d.stops.length);
-    $("#homeStats").innerHTML=`
-      <div class="stat"><span class="muted">Visits</span><b>${visits}</b></div>
-      <div class="stat"><span class="muted">Driving</span><b>${fmtDur(drive)}</b></div>
-      <div class="stat"><span class="muted">Distance</span><b>${Math.round(km/1000)} km</b></div>
-      <div class="stat"><span class="muted">Days out</span><b>${used.length}</b></div>`;
-    const miss=sch.unplaced.length+sch.notFound.length;
-    $("#homeDays").innerHTML=sch.days.map((d,i)=>{
-      const dt=new Date(d.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"});
-      return `<div class="hd"><i style="background:${d.stops.length?dayColor(i):"var(--line)"}"></i><b>${esc(dt)}</b>
-        <span class="muted">${d.stops.length?`${d.stops.length} visit${d.stops.length===1?"":"s"} · ${fmtTime(d.leave)} to ${fmtTime(d.end)}`:"No visits"}</span>
-        <span class="small">${d.stops.length?fmtDur(d.driveSec)+" drive":""}</span></div>`;
-    }).join("")+(stale?`<div class="banner warn">The clients for this week have changed since it was built. Rebuild to update it.</div>`:"")
-      +(miss?`<div class="banner bad">${miss} client${miss===1?"":"s"} couldn't be fitted in. Open the schedule for details.</div>`:"");
+  // Today: the day plan for today (Planner / Plan a day), else today's day from a built week
+  const tIso=todayIso(), tp=S.dayPlans&&S.dayPlans[tIso], tr=tp&&tp.ids.length&&tp.result&&!tp.stale?tp.result:null;
+  const tdAny=sch && sch.days.find(d=>d.date===tIso);
+  $("#homeWeekTitle").innerHTML=`Today <span class="muted" style="font-weight:400;font-size:.95rem">${esc(new Date().toLocaleDateString("en-AU",{weekday:"long",day:"numeric",month:"long"}))}</span>`;
+  const stat=(l,v)=>`<div class="stat"><span class="muted">${l}</span><b>${v}</b></div>`;
+  if(tp && tp.ids.length){
+    $("#homeWeekBtns").innerHTML=`<button class="btn${tr?"":" primary"}" data-hometoday="1">${tr?"Open day":"Plan today"}</button>`;
+    $("#homeStats").innerHTML=stat("Visits",tp.ids.length)+(tr?stat("Leave",fmtTime(tr.leave/60))+stat("Home by",fmtTime(tr.back/60))+stat("Driving",fmtDur(tr.drive)):"");
+    $("#homeDays").innerHTML=tp.ids.map(id=>{ const c=client(id); if(!c) return ""; const s2=tr&&tr.stops[id];
+      return `<div class="hd"><i style="background:${c.zone?zoneColour(c.zone):"var(--line)"}"></i><b>${s2?fmtTime(s2.start/60):"–"}</b><span>${esc(c.name)}${tp.pins[id]?" 📌":""}</span><span class="small muted">${esc((c.address||"").split(",")[1]||"")}</span></div>`; }).join("")
+      +(tr?"":`<p class="muted small" style="margin:0">Visit order not worked out yet.</p>`);
+  } else if(tdAny && tdAny.stops.length){
+    $("#homeWeekBtns").innerHTML=`<button class="btn primary" data-today="${tdAny.key}">Open today</button>`;
+    $("#homeStats").innerHTML=stat("Visits",tdAny.stops.length)+stat("Leave",fmtTime(tdAny.leave))+stat("Done by",fmtTime(tdAny.end))+stat("Driving",fmtDur(tdAny.driveSec));
+    $("#homeDays").innerHTML="";
   } else {
-    const sel=S.clients.filter(c=>c.selected), mins=sel.reduce((a,c)=>a+c.visitMin,0), days=DAY_KEYS.filter(k=>st.days[k]);
-    $("#homeStats").innerHTML=`
-      <div class="stat"><span class="muted">Clients ticked</span><b>${sel.length}</b></div>
-      <div class="stat"><span class="muted">Visit time</span><b>${mins?fmtDur(mins*60):"–"}</b></div>
-      <div class="stat"><span class="muted">Working days</span><b>${days.length}</b></div>`;
-    $("#homeDays").innerHTML=`<p class="muted small" style="margin:0">${sel.length?"Not built yet. Plan this week to get the best visit order and drive times.":"Tick the clients you're seeing this week in Planner."} Working ${days.length?esc(days.join(", ")):"no days"}, ${esc(fmtTime(toMin(st.start)))} to ${esc(fmtTime(toMin(st.end)))}.</p>`;
+    $("#homeWeekBtns").innerHTML=`<button class="btn" data-go="week">Open Planner</button>`;
+    $("#homeStats").innerHTML="";
+    $("#homeDays").innerHTML=`<p class="muted small" style="margin:0">No visits booked today.</p>`;
   }
   // All weeks
   $("#homeWeeks").innerHTML=W.map((x,i)=>{
@@ -1864,6 +1854,7 @@ function renderSchedule(){
   }).join("");
   drawMap();
 }
+document.addEventListener("click", e=>{ if(e.target.closest("[data-hometoday]")){ S.dayDate=todayIso(); save(); go("day"); } });
 document.addEventListener("click", e=>{ const b=e.target.closest("[data-today]"); if(!b) return; schedDay=b.dataset.today; mapDay=schedDay; go("schedule"); });
 $("#schedDays").addEventListener("click", e=>{ const b=e.target.closest("[data-sday]"); if(!b) return; schedDay=b.dataset.sday; mapDay=schedDay||null; renderSchedule(); });
 // Live map: real Gold Coast streets drawn on the device with MapLibre; falls back to the simple drawing if it can't start.
