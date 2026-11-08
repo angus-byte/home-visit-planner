@@ -224,6 +224,8 @@ details.card summary{cursor:pointer;font-weight:600}
 .drow .ctl .rm:hover{background:var(--bad-soft);color:var(--bad)}
 .drow .warn{grid-column:3/-1;font-size:.8rem;color:var(--bad);font-weight:600}
 .chip.zone{background:#eef3e6;color:#3d6b12}
+#dAdd{padding-right:40px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%235f7089' stroke-width='1.8'/%3E%3C/svg%3E") no-repeat right 14px center}
+#dAdd::-webkit-search-cancel-button{display:none}
 @media (max-width:640px){
   .drow{grid-template-columns:28px 64px minmax(0,1fr);padding:10px}
   .drow .ctl{grid-column:2/-1;justify-content:flex-end}
@@ -349,7 +351,7 @@ nav.steps button{border-radius:999px}
     <input type="file" id="dFile" accept=".csv,.xlsx,.xls,.txt" hidden>
     <div id="dMsg" class="banner info" hidden></div>
     <div class="ac-wrap noprint">
-      <input type="search" id="dAdd" placeholder="Add a client: type a name or suburb" autocomplete="off" aria-label="Add a client to this day" aria-controls="dAddList">
+      <input type="search" id="dAdd" role="combobox" aria-expanded="false" aria-autocomplete="list" placeholder="Choose a client, or start typing a name" autocomplete="off" aria-label="Add a client to this day" aria-controls="dAddList">
       <ul class="ac-list" id="dAddList" role="listbox" hidden></ul>
     </div>
     <div id="dNotice"></div>
@@ -2153,23 +2155,27 @@ $("#v-day").addEventListener("click", e=>{
 let dAddItems=[], dAddActive=-1;
 function dAddRender(){
   const q=$("#dAdd").value.trim().toLowerCase(), p=dayPlan(), list=$("#dAddList");
-  if(!q){ list.hidden=true; return; }
-  const words=q.split(/\s+/);
+  const words=q?q.split(/\s+/):[];
   dAddItems=S.clients.filter(c=>!p.ids.includes(c.id) && words.every(w=>[c.name,c.address,c.zone].join(" ").toLowerCase().includes(w)))
-    .sort((a,b)=>((b.zone||"")===p.zone)-((a.zone||"")===p.zone) || a.name.localeCompare(b.name)).slice(0,8);
+    .sort((a,b)=>(q?(b.name.toLowerCase().startsWith(q))-(a.name.toLowerCase().startsWith(q)):0) || ((b.zone||"")===p.zone)-((a.zone||"")===p.zone) || a.name.localeCompare(b.name)).slice(0,q?8:200);
+  if(q && dAddActive<0 && dAddItems.length) dAddActive=0;   // typing highlights the best match so Enter or Tab fills it
   list.innerHTML=dAddItems.length ? dAddItems.map((c,i)=>`<li role="option" data-i="${i}" aria-selected="${i===dAddActive}"><b>${esc(c.name)}</b>${c.zone?` <span class="chip zone">${esc(c.zone)}</span>`:""}<small style="color:var(--muted);font-weight:400;white-space:normal;text-align:right">${esc(c.address)}</small></li>`).join("")
-    : `<li class="note">No match in your client list. Add new clients on the Clients page.</li>`;
-  list.hidden=false;
+    : `<li class="note">${q?"No match in your client list. Add new clients on the Clients page.":"Everyone in your client list is already on this day."}</li>`;
+  list.hidden=false; $("#dAdd").setAttribute("aria-expanded","true");
+  const a=list.querySelector('[aria-selected="true"]'); if(a) a.scrollIntoView({block:"nearest"});
 }
-function dAddPick(i){ const c=dAddItems[i]; if(!c) return; addToDay(S.dayDate,c.id); save(); $("#dAdd").value=""; dAddActive=-1; $("#dAddList").hidden=true; renderDay(); $("#dAdd").focus(); }
+function dAddPick(i){ const c=dAddItems[i]; if(!c) return; addToDay(S.dayDate,c.id); save(); $("#dAdd").value=""; dAddActive=-1; $("#dAddList").hidden=true; renderDay(); $("#dAdd").focus(); dAddRender(); }
 $("#dAdd").addEventListener("input", ()=>{ dAddActive=-1; dAddRender(); });
 $("#dAdd").addEventListener("keydown", e=>{
   if(e.key==="ArrowDown"||e.key==="ArrowUp"){ e.preventDefault(); const n=dAddItems.length; if(!n) return; const dn=e.key==="ArrowDown"; dAddActive = dAddActive<0 ? (dn?0:n-1) : (dAddActive+(dn?1:n-1))%n; dAddRender(); }
-  else if(e.key==="Enter"){ e.preventDefault(); dAddPick(dAddActive<0?0:dAddActive); }
+  else if(e.key==="Enter"){ e.preventDefault(); if(dAddItems.length) dAddPick(dAddActive<0?0:dAddActive); }
+  else if(e.key==="Tab" && !$("#dAddList").hidden && $("#dAdd").value.trim() && dAddItems[dAddActive]){ e.preventDefault(); dAddPick(dAddActive); }
   else if(e.key==="Escape"){ $("#dAddList").hidden=true; }
 });
 $("#dAddList").addEventListener("pointerdown", e=>{ const li=e.target.closest("[data-i]"); if(li){ e.preventDefault(); dAddPick(+li.dataset.i); } });
-$("#dAdd").addEventListener("blur", ()=>setTimeout(()=>$("#dAddList").hidden=true,150));
+$("#dAdd").addEventListener("focus", ()=>{ dAddActive=-1; dAddRender(); });
+$("#dAdd").addEventListener("click", ()=>{ if($("#dAddList").hidden){ dAddActive=-1; dAddRender(); } });
+$("#dAdd").addEventListener("blur", ()=>setTimeout(()=>{ $("#dAddList").hidden=true; $("#dAdd").setAttribute("aria-expanded","false"); },150));
 // Drag to reorder (mouse, touch or pen), or arrow keys on the handle
 let drag=null;
 $("#dList").addEventListener("pointerdown", e=>{
