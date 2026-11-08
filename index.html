@@ -198,6 +198,41 @@ details.card summary{cursor:pointer;font-weight:600}
 .chip.rep{background:var(--soft);color:var(--accent)}
 @media (max-width:640px){ .msg{grid-template-columns:1fr} .msg .row{justify-content:flex-start!important} .hide-sm{display:none} nav.steps{width:100%} nav.steps button{flex:1;padding:8px 6px} .wrap{padding-block:20px 56px} .card{padding:16px} th,td{padding:10px} }
 @media print{ header.top,.noprint,#map{display:none!important} .day[hidden]{display:flex!important} .day{break-inside:avoid;border-color:#999;box-shadow:none} .days{grid-template-columns:1fr 1fr} }
+/* Plan a day */
+.dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+.dlist{list-style:none;margin:0;padding:0;display:grid;gap:0}
+.dlist .leg{display:flex;gap:10px;align-items:center;padding:6px 0 6px 44px;font-size:.85rem;color:var(--muted)}
+.dlist .leg b{color:var(--ink);font-variant-numeric:tabular-nums}
+.dlist .drv{font-size:.8rem;color:var(--muted);padding:4px 0 4px 44px}
+.drow{display:grid;grid-template-columns:32px 78px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:var(--shadow-1)}
+.drow.pinned{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent),var(--shadow-1)}
+.drow.late{border-color:#f4b9b2;background:var(--bad-soft)}
+.drow.dragging{opacity:.9;box-shadow:0 10px 28px rgba(15,31,38,.22);position:relative;z-index:5;transform:scale(1.01)}
+.drow .grip{width:32px;height:40px;border:0;background:none;cursor:grab;touch-action:none;color:var(--muted);border-radius:8px;display:grid;place-items:center}
+.drow .grip:hover{background:var(--soft)}
+.drow .grip:active{cursor:grabbing}
+.drow .tm{font-weight:700;font-variant-numeric:tabular-nums;font-size:1.05rem}
+.drow .tm small{display:block;font-weight:500;font-size:.75rem;color:var(--muted)}
+.drow .who{min-width:0}
+.drow .who b{display:block;overflow:hidden;text-overflow:ellipsis}
+.drow .who .small{overflow:hidden;text-overflow:ellipsis}
+.drow .ctl{display:flex;gap:6px;align-items:center}
+.drow .ctl input[type=time]{width:128px;min-height:38px;padding:6px 8px;font-size:.9rem}
+.drow .ctl .pinbtn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line-strong);background:#fff;cursor:pointer;display:grid;place-items:center;color:var(--muted)}
+.drow .ctl .pinbtn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.drow .ctl .rm{width:38px;height:38px;border-radius:50%;border:0;background:none;cursor:pointer;color:var(--muted);font-size:1.3rem;line-height:1}
+.drow .ctl .rm:hover{background:var(--bad-soft);color:var(--bad)}
+.drow .warn{grid-column:3/-1;font-size:.8rem;color:var(--bad);font-weight:600}
+.chip.zone{background:#eef3e6;color:#3d6b12}
+@media (max-width:640px){
+  .drow{grid-template-columns:28px 64px minmax(0,1fr);padding:10px}
+  .drow .ctl{grid-column:2/-1;justify-content:flex-end}
+  .drow .warn{grid-column:2/-1}
+  .dlist .leg,.dlist .drv{padding-left:38px}
+  nav.steps .n{display:none}
+  nav.steps button{font-size:.82rem;padding:8px 4px}
+}
+@media print{ .drow .ctl,.drow .grip{display:none!important} .drow{grid-template-columns:0 78px 1fr;box-shadow:none} }
 /* Practice theme */
 h1,h2,h3{color:var(--accent);letter-spacing:0}
 h1{font-weight:400;font-size:clamp(1.7rem,3.2vw,2.3rem)}
@@ -220,6 +255,7 @@ nav.steps button{border-radius:999px}
     </div>
     <nav class="steps" aria-label="Steps">
       <button data-go="home"><span class="n"><svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M1 6 6 1.5 11 6M2.5 5v5.5h7V5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>Home</button>
+      <button data-go="day"><span class="n"><svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><rect x="1.5" y="2.5" width="9" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M1.5 5h9M4 1v2.5M8 1v2.5" stroke="currentColor" stroke-width="1.5"/></svg></span>Plan a day</button>
       <button data-go="clients"><span class="n">1</span>Clients</button>
       <button data-go="week"><span class="n">2</span>Plan weeks</button>
       <button data-go="schedule"><span class="n">3</span>Schedule</button>
@@ -277,6 +313,67 @@ nav.steps button{border-radius:999px}
   <p class="privacy">Client details are saved only in this browser on this device and are never uploaded.</p>
 </section>
 
+<!-- PLAN A DAY -->
+<section class="view" id="v-day" hidden>
+  <div>
+    <h1>Plan a day</h1>
+    <p class="muted" style="margin:4px 0 0">Pick the day, add who's booked, and get the most efficient visit order. Fix anyone who needs a set time and everyone else is fitted around them.</p>
+  </div>
+  <div class="card" style="display:grid;gap:14px">
+    <div class="grid2">
+      <label class="f">Day<input type="date" id="dDate"></label>
+      <label class="f">Zone<select id="dZone"></select></label>
+    </div>
+    <div id="dSaved" class="row small" hidden></div>
+    <div class="dgrid">
+      <label class="f">First visit from<input type="time" id="dStart" step="300"></label>
+      <label class="f">Finish by<input type="time" id="dEnd" step="300"></label>
+      <label class="f">Appointment (min)<input type="number" id="dAppt" min="5" max="240" step="5"></label>
+      <label class="f">Pack down + travel (min)<input type="number" id="dPack" min="0" max="120" step="5"></label>
+      <label class="f">Round times to<select id="dRound"><option value="0">Exact</option><option value="5">5 min</option><option value="15">15 min</option></select></label>
+    </div>
+    <div class="row small" style="gap:6px 14px">
+      <span><span class="muted">Start and finish:</span> <b id="dBase"></b> <button class="btn link" data-go="home">Change</button></span>
+      <label class="row" style="gap:6px;flex-wrap:nowrap"><input type="checkbox" id="dReturn"> Finish back there</label>
+    </div>
+    <p class="muted small" style="margin:0">If a drive takes longer than the pack down + travel time, the next visit moves later to allow for it.</p>
+  </div>
+  <div class="card" style="display:grid;gap:12px">
+    <div class="row spread">
+      <h2 style="font-size:1.2rem">Visits <span class="muted" id="dCount"></span></h2>
+      <div class="row noprint">
+        <button class="btn green" id="dCliniko">Import day from Cliniko</button>
+        <button class="btn" id="dFileBtn">Import day from file</button>
+      </div>
+    </div>
+    <input type="file" id="dFile" accept=".csv,.xlsx,.xls,.txt" hidden>
+    <div id="dMsg" class="banner info" hidden></div>
+    <div class="ac-wrap noprint">
+      <input type="search" id="dAdd" placeholder="Add a client: type a name or suburb" autocomplete="off" aria-label="Add a client to this day" aria-controls="dAddList">
+      <ul class="ac-list" id="dAddList" role="listbox" hidden></ul>
+    </div>
+    <div id="dNotice"></div>
+    <div id="dStats" class="stats" hidden></div>
+    <ol id="dList" class="dlist"></ol>
+    <div class="row noprint">
+      <button class="btn primary big" id="dGo">Optimise order</button>
+      <span class="muted small" id="dHint"></span>
+    </div>
+    <div id="dProgress" hidden style="display:grid;gap:8px">
+      <div id="dStatus">Working…</div>
+      <div class="progress"><i id="dBar"></i></div>
+    </div>
+    <div class="row noprint" id="dOut" hidden>
+      <button class="btn" id="dCopy">Copy times</button>
+      <button class="btn" id="dCsv">Download CSV</button>
+      <a class="btn" id="dMaps" target="_blank" rel="noopener">Open in Google Maps</a>
+      <button class="btn" id="dPrint">Print</button>
+      <button class="btn link danger" id="dClear">Clear this day</button>
+    </div>
+  </div>
+  <p class="privacy">Client details are saved only in this browser on this device and are never uploaded.</p>
+</section>
+
 <!-- CLIENTS -->
 <section class="view" id="v-clients" hidden>
   <div class="row spread">
@@ -321,6 +418,8 @@ nav.steps button{border-radius:999px}
       <li><b>Phone</b>, <b>Email</b>, <b>Parent/Guardian</b>, <b>Notes</b> (optional)</li>
       <li><b>Visit length</b> in minutes, e.g. 45 (defaults to 60)</li>
       <li><b>Days</b> the family is available, e.g. "Mon, Wed" (blank = any day)</li>
+      <li><b>Zone</b> (optional), e.g. "Zone 1" or "North", so you can plan one zone per day</li>
+      <li><b>Date</b> and <b>Time</b> of a booking (optional). Rows with a date are added to that day in Plan a day. In Plan a day, "Import day from file" takes only the rows for the day you picked, and rows without an address are matched to clients already in your list by name.</li>
     </ul>
     <p><b>From Cliniko:</b> a Cliniko patient export (Settings, Data exports, Patients) imports as is: Address 1 to 3, City, State and Post code are joined into one address.</p>
     <div class="row"><button class="btn" id="btnTemplate">Download template CSV</button><button class="btn" id="btnExportClients">Back up client list</button></div>
@@ -444,8 +543,10 @@ nav.steps button{border-radius:999px}
       <label class="f">Parent / guardian<input type="text" id="cParent"></label>
       <label class="f">Visit length (min)<input type="number" id="cLen" min="10" max="240" step="5" value="60"></label>
       <label class="f">Available days<input type="text" id="cDays" placeholder="Any day, or e.g. Mon, Wed"></label>
+      <label class="f">Zone<input type="text" id="cZone" list="zoneList" placeholder="e.g. Zone 1 or North"></label>
       <label class="f">How often<select id="cEvery"><option value="0">When I tick them</option><option value="1">Every week</option><option value="2">Every 2 weeks</option><option value="3">Every 3 weeks</option><option value="4">Every 4 weeks</option></select></label>
     </div>
+    <datalist id="zoneList"></datalist>
     <label class="f">Notes<textarea id="cNotes"></textarea></label>
     <div class="row spread">
       <button type="button" class="btn danger" id="cDelete">Delete client</button>
@@ -470,6 +571,7 @@ nav.steps button{border-radius:999px}
         <option value="month">Patients with appointments in the next 4 planning weeks (ticked in the right week)</option>
         <option value="week">Patients with appointments in the current planning week only</option>
         <option value="all">All active patients</option>
+        <option value="day" id="ckDayOpt">Patients booked on the day I'm planning</option>
       </select>
     </label>
     <div id="ckMsg" class="banner info" hidden></div>
@@ -606,6 +708,84 @@ const Solver = (() => {
 })();
 /* ============================ END SOLVER ============================ */
 if (typeof module !== "undefined") { module.exports = {Solver}; }
+</script>
+<script>
+"use strict";
+/* ============================ DAY SOLVER (pure, testable) ============================
+   Orders one day's visits from a start address. Node 0 = start address, node i+1 = visit i.
+   opts: {n, durAt(i,j,clockSec), visitSec, gapSec (pack down + travel allowance; a longer drive pushes the next visit later),
+          roundSec (start times rounded up to this), startSec (earliest first visit), endSec (finish by),
+          pins: [clockSec|null] per visit, returnHome}
+   Pinned visits start exactly at their time when reachable; the rest are fitted around them. */
+const DaySolver = (() => {
+  function evaluate(order, o){
+    const stops=[]; let prev=0, prevEnd=null, drive=0, wait=0, late=0, leave=null;
+    for(const c of order){
+      const pin=o.pins[c];
+      let earliest, d;
+      if(prevEnd==null){
+        const target = pin!=null ? pin : o.startSec;
+        d=o.durAt(0,c+1,target-o.durAt(0,c+1,target)); earliest=target; leave=target-d;
+      } else {
+        d=o.durAt(prev,c+1,prevEnd);
+        earliest=prevEnd+Math.max(o.gapSec,d);
+        if(o.roundSec) earliest=Math.ceil((earliest-1)/o.roundSec)*o.roundSec;
+      }
+      let start=earliest, lateBy=0, waitBy=0;
+      if(pin!=null){ if(earliest>pin+30){ lateBy=earliest-pin; } else { waitBy=pin-earliest; start=pin; } }
+      const end=start+o.visitSec;
+      stops.push({i:c, start, end, driveSec:d, wait:waitBy, late:lateBy, pinned:pin!=null});
+      drive+=d; wait+=waitBy; late+=lateBy; prev=c+1; prevEnd=end;
+    }
+    let back=prevEnd, retSec=0;
+    if(order.length && o.returnHome){ retSec=o.durAt(prev,0,prevEnd); back=prevEnd+retSec; drive+=retSec; }
+    const finish = order.length ? back : o.startSec;
+    const over=Math.max(0, finish-o.endSec);
+    const cost = drive + 0.3*wait + 40*late + 3*over;
+    return {order:order.slice(), stops, leave, back, retSec, drive, wait, late, over, cost};
+  }
+  function permute(n, f){
+    const a=[...Array(n).keys()], c=Array(n).fill(0); f(a); let i=0;
+    while(i<n){ if(c[i]<i){ const k=i%2?c[i]:0; [a[k],a[i]]=[a[i],a[k]]; f(a); c[i]++; i=0; } else { c[i]=0; i++; } }
+  }
+  function localSearch(order, o){
+    let best=evaluate(order,o), cur=best.order, improved=true;
+    const n=cur.length;
+    while(improved){
+      improved=false;
+      for(let i=0;i<n && !improved;i++) for(let j=0;j<n && !improved;j++){ if(i===j) continue;
+        const r=cur.slice(); const [x]=r.splice(i,1); r.splice(j,0,x);           // relocate
+        const e=evaluate(r,o); if(e.cost<best.cost-1e-6){ best=e; cur=r; improved=true; } }
+      for(let i=0;i<n-1 && !improved;i++) for(let j=i+1;j<n && !improved;j++){
+        const r=cur.slice(); [r[i],r[j]]=[r[j],r[i]];                                // swap
+        let e=evaluate(r,o); if(e.cost<best.cost-1e-6){ best=e; cur=r; improved=true; continue; }
+        const q=cur.slice(0,i).concat(cur.slice(i,j+1).reverse(), cur.slice(j+1)); // 2-opt
+        e=evaluate(q,o); if(e.cost<best.cost-1e-6){ best=e; cur=q; improved=true; } }
+    }
+    return best;
+  }
+  function solve(o){
+    const n=o.n; if(!n) return evaluate([],o);
+    if(n<=8){ let best=null; permute(n, a=>{ const e=evaluate(a,o); if(!best||e.cost<best.cost) best=e; }); return best; }
+    // Start from pins in time order with the rest inserted cheapest-first, then improve; plus random restarts.
+    const idx=[...Array(n).keys()];
+    let seed=idx.filter(i=>o.pins[i]!=null).sort((a,b)=>o.pins[a]-o.pins[b]);
+    for(const c of idx.filter(i=>o.pins[i]==null)){
+      let bestR=null, bestC=Infinity;
+      for(let k=0;k<=seed.length;k++){ const r=seed.slice(0,k).concat([c],seed.slice(k)); const e=evaluate(r,o).cost; if(e<bestC){ bestC=e; bestR=r; } }
+      seed=bestR;
+    }
+    let best=localSearch(seed,o);
+    let rnd=12345; const rand=()=>(rnd=(rnd*1103515245+12345)&0x7fffffff)/0x7fffffff;
+    for(let t=0;t<40;t++){
+      const r=idx.slice(); for(let i=n-1;i>0;i--){ const j=Math.floor(rand()*(i+1)); [r[i],r[j]]=[r[j],r[i]]; }
+      const e=localSearch(r,o); if(e.cost<best.cost) best=e;
+    }
+    return best;
+  }
+  return {solve, evaluate};
+})();
+if (typeof module !== "undefined") { module.exports.DaySolver = DaySolver; }
 </script>
 <script>
 "use strict";
@@ -897,6 +1077,7 @@ function go(view){
   if(view==="week") renderWeek();
   if(view==="schedule") renderSchedule();
   if(view==="month") renderMonth();
+  if(view==="day") renderDay();
   if(view!=="month") renderWeekTabs();
   try{ history.replaceState(null,"","#"+view); }catch(e){}
   window.scrollTo(0,0);
@@ -925,13 +1106,13 @@ function csvCell(v){ v=String(v??""); return /[",\n]/.test(v) ? '"'+v.replace(/"
 /* ---------- Clients view ---------- */
 function renderClients(){
   const q = $("#search").value.trim().toLowerCase();
-  const list = S.clients.filter(c=>!q || [c.name,c.address,c.notes,c.parent].join(" ").toLowerCase().includes(q));
+  const list = S.clients.filter(c=>!q || [c.name,c.address,c.notes,c.parent,c.zone].join(" ").toLowerCase().includes(q));
   $("#exampleBanner").hidden = !S.clients.some(c=>c.example);
   $("#clientCount").textContent = `${S.clients.length} clients · ${S.clients.filter(c=>c.selected).length} ticked for week ${S.wk+1} (${esc(weekLabel(S.weeks[S.wk]))})`;
   $("#clientRows").innerHTML = list.length ? list.map(c=>`
     <tr>
       <td><input type="checkbox" data-sel="${c.id}" ${c.selected?"checked":""} aria-label="See ${esc(c.name)} this week"></td>
-      <td><b>${esc(c.name)}</b>${c.example?' <span class="chip ex">Example</span>':''}${+c.every?` <span class="chip rep">${EVERY[c.every]}</span>`:''}${c.notes&&!c.example?`<div class="muted small">${esc(c.notes)}</div>`:''}</td>
+      <td><b>${esc(c.name)}</b>${c.example?' <span class="chip ex">Example</span>':''}${+c.every?` <span class="chip rep">${EVERY[c.every]}</span>`:''}${c.zone?` <span class="chip zone">${esc(c.zone)}</span>`:''}${c.notes&&!c.example?`<div class="muted small">${esc(c.notes)}</div>`:''}</td>
       <td>${esc(c.address)}</td>
       <td class="hide-sm num">${esc(c.phone)}</td>
       <td class="num">${c.visitMin} min</td>
@@ -954,6 +1135,7 @@ function openDlg(c){
   $("#dlgTitle").textContent = c? "Edit client":"Add client";
   $("#cName").value=c?.name||""; $("#cAddr").value=c?.address||""; $("#cPhone").value=c?.phone||""; $("#cEmail").value=c?.email||"";
   $("#cParent").value=c?.parent||""; $("#cLen").value=c?.visitMin||60; $("#cDays").value=c?.days?.join(", ")||""; $("#cNotes").value=c?.notes||""; $("#cEvery").value=String(+c?.every||0);
+  $("#cZone").value=c?.zone||""; $("#zoneList").innerHTML=zonesOf().map(z=>`<option value="${esc(z)}">`).join("");
   $("#cDelete").hidden=!c; $("#delConfirm").hidden=true;
   $("#dlg").showModal();
 }
@@ -966,7 +1148,7 @@ $("#clientForm").addEventListener("submit", e=>{
   if(!addr||!name) return;
   const c = editing || {id:uid(), selected:true, geo:"pending"};
   if(c.address!==addr){ c.geo="pending"; c.lat=c.lng=null; }
-  Object.assign(c,{name,address:addr,phone:$("#cPhone").value.trim(),email:$("#cEmail").value.trim(),parent:$("#cParent").value.trim(),visitMin:Math.max(10,+$("#cLen").value||60),days:parseDays($("#cDays").value),notes:$("#cNotes").value.trim(),example:false});
+  Object.assign(c,{name,address:addr,phone:$("#cPhone").value.trim(),email:$("#cEmail").value.trim(),parent:$("#cParent").value.trim(),visitMin:Math.max(10,+$("#cLen").value||60),days:parseDays($("#cDays").value),notes:$("#cNotes").value.trim(),zone:$("#cZone").value.trim(),example:false});
   const every=+$("#cEvery").value||0, changed=(+c.every||0)!==every; c.every=every;
   if(!editing) S.clients.push(c);
   if(changed){ if(!editing) stashWeek(); relayRepeat(c); }
@@ -980,15 +1162,17 @@ $("#btnImport").addEventListener("click", ()=>$("#fileImport").click());
 $("#fileImport").addEventListener("change", async e=>{
   const f=e.target.files[0]; e.target.value=""; if(!f) return;
   try{
-    let rows;
-    if(/\.(xlsx|xls)$/i.test(f.name)){
-      if(!window.XLSX) throw new Error("The Excel reader didn't load. Check the internet connection, or save the sheet as CSV and import that.");
-      const wb = XLSX.read(await f.arrayBuffer(), {type:"array"});
-      rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, raw:false, defval:""});
-    } else rows = parseCSV(await f.text());
-    importRows(rows);
+    importRows(await readSheet(f));
   }catch(err){ showImport(`Couldn't read ${esc(f.name)}. ${esc(err.message)}`, true); }
 });
+async function readSheet(f){
+  if(/\.(xlsx|xls)$/i.test(f.name)){
+    if(!window.XLSX) throw new Error("The Excel reader didn't load. Check the internet connection, or save the sheet as CSV and import that.");
+    const wb = XLSX.read(await f.arrayBuffer(), {type:"array"});
+    return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, raw:false, defval:"", dateNF:"yyyy-mm-dd"});
+  }
+  return parseCSV(await f.text());
+}
 function parseCSV(text){
   const rows=[]; let row=[], cell="", q=false;
   text=text.replace(/^﻿/,"");
@@ -1011,35 +1195,67 @@ function mapHeaders(h){
     address: find("address","street"), suburb: find("suburb","city","town"), postcode: find("postcode","post code","zip"),
     address2: H.findIndex(x=>/address.*\b2\b|address line 2/.test(x)), address3: H.findIndex(x=>/address.*\b3\b|address line 3/.test(x)), state: H.findIndex(x=>/^state$/.test(x)),
     phone: find("phone","mobile","contact number","tel"), email: find("email","e-mail"), notes: find("note","comment"),
-    len: find("length","duration","minutes","mins"), days: find("days","available","availability","day")
+    len: find("length","duration","minutes","mins"), days: find("days","available","availability","day"),
+    zone: H.findIndex(x=>/\b(zone|area|region|territory)\b/.test(x)),
+    date: H.findIndex(x=>/date|starts|when/.test(x) && !/birth|dob|created|updated|modified|archiv|referral|last|next/.test(x))
   };
-  m.name = H.findIndex((x,i)=>i!==m.parent && /(^|\s)(name|patient|client|child)/.test(x) && i!==m.first && i!==m.last && !/first|last|parent|guardian/.test(x));
+  if(m.date<0) m.date=H.findIndex(x=>/appointment/.test(x) && !/type|length|duration|note|status|time|id/.test(x));
+  m.time=H.findIndex((x,i)=>i!==m.date && /(^|\s)time\b|^start$/.test(x) && !/created|updated|modified/.test(x));
+  if(m.days===m.date) m.days=-1;
+  m.name = H.findIndex((x,i)=>i!==m.parent && /(^|\s)(name|patient|client|child)/.test(x) && i!==m.first && i!==m.last && !/first|last|parent|guardian|zone|area|date|address|phone|email|\bid\b|number|type/.test(x));
   return m;
 }
-function importRows(rows){
-  if(rows.length<2) return showImport("That file has no rows under the header.", true);
+// opt.date: import only the rows booked on that day (if the file has a date column) and add them to that day's plan.
+// Rows with a date are also added to that date's day plan when importing a whole list.
+function importRows(rows, opt={}){
+  const dayMode=!!opt.date, msg=dayMode?dayMsg:showImport;
+  if(rows.length<2) return msg("That file has no rows under the header.", true);
   const m=mapHeaders(rows[0]);
-  if(m.address<0) return showImport("Couldn't find an Address column. Name one column \"Address\" and try again.", true);
-  if(m.name<0 && m.first<0) return showImport("Couldn't find a Name column. Name one column \"Name\" (or \"First name\" and \"Last name\") and try again.", true);
+  if(m.address<0 && !dayMode) return msg("Couldn't find an Address column. Name one column \"Address\" and try again.", true);
+  if(m.name<0 && m.first<0) return msg("Couldn't find a Name column. Name one column \"Name\" (or \"First name\" and \"Last name\") and try again.", true);
   const get=(r,i)=> i>=0 ? String(r[i]??"").trim() : "";
-  let added=0, updated=0, skipped=0;
-  const hadExamples = S.clients.some(c=>c.example);
+  const addedIds=new Set(), updatedIds=new Set(), missing=[], dates=new Set(); let skipped=0, otherDays=0, dayRows=0;
+  const hadExamples = S.clients.some(c=>c.example) && m.address>=0;   // a day list without addresses is matched to the current list instead
   if(hadExamples){ S.clients=S.clients.filter(c=>!c.example); clearPlans(); }
   for(const r of rows.slice(1)){
     const name = m.name>=0 ? get(r,m.name) : [get(r,m.first),get(r,m.last)].filter(Boolean).join(" ");
+    const when = m.date>=0 ? parseWhen(get(r,m.date)) : {};
+    const time = (m.time>=0 && parseClock(get(r,m.time))) || when.time || null;
+    if(dayMode && m.date>=0 && when.date!==opt.date){ otherDays++; continue; }
     let address=[get(r,m.address),get(r,m.address2),get(r,m.address3)].filter(Boolean).join(", "); const sub=get(r,m.suburb), pc=get(r,m.postcode), stt=get(r,m.state);
     if(sub && !address.toLowerCase().includes(sub.toLowerCase())) address += ", "+sub;
     if(stt && !new RegExp("\\b"+stt.replace(/[^a-z]/gi,"")+"\\b","i").test(address)) address += " "+stt;
     if(pc && !address.includes(pc)) address += " "+pc;
-    if(!name || !address){ skipped++; continue; }
-    const len=parseInt(get(r,m.len),10);
-    const rec={name,address,phone:get(r,m.phone),email:get(r,m.email),parent:get(r,m.parent),notes:get(r,m.notes),visitMin: len>=10? len:60, days:parseDays(get(r,m.days)), example:false};
-    const ex=S.clients.find(c=>c.name.toLowerCase()===name.toLowerCase());
-    if(ex){ if(ex.address!==address){ ex.geo="pending"; ex.lat=ex.lng=null; } Object.assign(ex,rec); updated++; }
-    else { S.clients.push({id:uid(),selected:false,geo:"pending",...rec}); added++; }
+    const ex=name && S.clients.find(c=>c.name.toLowerCase()===name.toLowerCase());
+    if(!name || (!address && !ex)){ if(dayMode && name) missing.push(name); else skipped++; continue; }
+    let c=ex;
+    if(address){
+      const len=parseInt(get(r,m.len),10);
+      const rec={name,address,phone:get(r,m.phone),email:get(r,m.email),parent:get(r,m.parent),notes:get(r,m.notes),zone:get(r,m.zone),visitMin: len>=10? len:60, days:parseDays(get(r,m.days)), example:false};
+      if(ex){
+        if(ex.address!==address){ ex.geo="pending"; ex.lat=ex.lng=null; }
+        // Only overwrite what this file actually has, so an appointment list doesn't blank out phone numbers or zones.
+        for(const k of ["name","address","phone","email","parent","notes","zone"]) if(rec[k]) ex[k]=rec[k];
+        if(len>=10) ex.visitMin=len; if(m.days>=0) ex.days=rec.days; ex.example=false;
+        if(!addedIds.has(ex.id)) updatedIds.add(ex.id);
+      } else { c={id:uid(),selected:false,geo:"pending",...rec}; S.clients.push(c); addedIds.add(c.id); }
+    }
+    const d = dayMode ? opt.date : when.date;
+    if(d){ addToDay(d, c.id, time); dates.add(d); dayRows++; }
   }
-  save(); renderClients();
-  showImport(`Imported <b>${added}</b> new client${added===1?"":"s"}${updated?`, updated ${updated}`:""}${skipped?`, skipped ${skipped} row${skipped===1?"":"s"} with no name or address`:""}.${hadExamples?" Example clients removed.":""} Tick who you're seeing this week, then go to <b>Plan weeks</b>.`);
+  save();
+  if(dayMode){
+    renderDay();
+    const p=dayPlan(opt.date);
+    if(!dayRows) return dayMsg(`No visits on ${esc(dayLabel(opt.date,{weekday:"long",day:"numeric",month:"long"}))} in that file${m.date<0?"":` (it has ${otherDays} row${otherDays===1?"":"s"} on other days)`}${missing.length?`. Not in your client list: ${esc(missing.join(", "))}`:""}.`, true);
+    dayMsg(`Added <b>${dayRows}</b> visit${dayRows===1?"":"s"} for ${esc(dayLabel(opt.date,{weekday:"long",day:"numeric",month:"long"}))}${m.date<0?" (the file has no date column, so every row was added)":""}${addedIds.size?`, including ${addedIds.size} new client${addedIds.size===1?"":"s"}`:""}.`
+      +(missing.length?` <b>Not added</b> (not in your client list and no address in the file): ${esc(missing.join(", "))}.`:"")+(p.ids.length?" Now press <b>Optimise order</b>.":""), !!missing.length && !dayRows);
+    return;
+  }
+  renderClients();
+  const added=addedIds.size, updated=updatedIds.size;
+  showImport(`Imported <b>${added}</b> new client${added===1?"":"s"}${updated?`, updated ${updated}`:""}${skipped?`, skipped ${skipped} row${skipped===1?"":"s"} with no name or address`:""}.${hadExamples?" Example clients removed.":""}`
+    +(dates.size?` Visits were added to ${dates.size} day${dates.size===1?"":"s"} in <a href="#day" data-go="day">Plan a day</a>.`:` Tick who you're seeing this week, then go to <b>Plan weeks</b>, or plan one day at a time in <a href="#day" data-go="day">Plan a day</a>.`));
 }
 /* ---------- Cliniko import ----------
    Cliniko's API can't be called from a browser (no CORS, and it needs a User-Agent
@@ -1051,10 +1267,13 @@ function ckLoad(){ try{ return JSON.parse(localStorage.getItem(CK_STORE))||{}; }
 function ckSave(o){ try{ localStorage.setItem(CK_STORE, JSON.stringify(o)); }catch(e){} }
 function ckMsg(html,bad){ const b=$("#ckMsg"); b.className="banner "+(bad?"bad":"info"); b.innerHTML=html; b.hidden=false; }
 function ckProg(f){ const p=$("#ckProg"); if(f==null){ p.hidden=true; return; } p.hidden=false; p.firstElementChild.style.width=Math.round(f*100)+"%"; }
-$("#btnCliniko").addEventListener("click", ()=>{
-  const c=ckLoad(); $("#ckKey").value=c.key||""; $("#ckRemember").checked=!!c.key; $("#ckProxy").value=c.proxy||"https://cliniko-proxy.angus-ca0.workers.dev";
+$("#btnCliniko").addEventListener("click", ()=>openCliniko());
+function openCliniko(mode){
+  const c=ckLoad();
+  $("#ckDayOpt").textContent=`Patients booked on the day I'm planning (${dayLabel(S.dayDate,{weekday:"short",day:"numeric",month:"short",year:"numeric"})})`;
+  if(mode) $("#ckMode").value=mode; else if($("#ckMode").value==="day") $("#ckMode").value="month"; $("#ckKey").value=c.key||""; $("#ckRemember").checked=!!c.key; $("#ckProxy").value=c.proxy||"https://cliniko-proxy.angus-ca0.workers.dev";
   $("#ckMsg").hidden=true; ckProg(null); $("#dlgCliniko").showModal();
-});
+}
 $("#ckCancel").addEventListener("click", ()=>$("#dlgCliniko").close());
 function ckClient(key, proxy){
   key=key.trim(); proxy=proxy.trim().replace(/\/+$/,"");
@@ -1094,7 +1313,17 @@ $("#clinikoForm").addEventListener("submit", async e=>{
     const ck=ckClient(key, proxy);
     let patients=[], apptIds=null;
     let weekOf=null;   // patient link -> set of week indexes they're booked in
-    if(mode==="week"||mode==="month"){
+    let dayInfo=null;  // Cliniko patient id -> booked time, for "the day I'm planning"
+    if(mode==="day"){
+      const d0=new Date(S.dayDate+"T00:00:00"), d1=new Date(d0); d1.setDate(d1.getDate()+1);
+      ckMsg("Finding appointments on "+esc(dayLabel(S.dayDate,{weekday:"long",day:"numeric",month:"long"}))+"...");
+      const q="individual_appointments?per_page=100&q[]="+encodeURIComponent("starts_at:>="+d0.toISOString())+"&q[]="+encodeURIComponent("starts_at:<"+d1.toISOString());
+      const appts=(await ck.all(q,"individual_appointments")).filter(a=>!a.cancelled_at && !a.deleted_at && !a.did_not_arrive);
+      const byLink=new Map(); appts.forEach(a=>{ const l=a.patient&&a.patient.links&&a.patient.links.self; if(l && !byLink.has(l)) byLink.set(l, parseWhen(a.starts_at).time); });
+      if(!byLink.size){ ckProg(null); ckMsg(`No appointments found in Cliniko on that day. Check the date on <b>Plan a day</b>.`); return; }
+      dayInfo=new Map(); const links=[...byLink.keys()];
+      for(let i=0;i<links.length;i++){ ckMsg(`Fetching patient ${i+1} of ${links.length}...`); const p=await ck.get(links[i]); patients.push(p); dayInfo.set(String(p.id), byLink.get(links[i])); ckProg((i+1)/links.length); }
+    } else if(mode==="week"||mode==="month"){
       stashWeek();
       const first=mode==="month"?0:S.wk, last=mode==="month"?S.weeks.length-1:S.wk;
       const wk=new Date(S.weeks[first].start+"T00:00:00"), end=new Date(S.weeks[last].start+"T00:00:00"); end.setDate(end.getDate()+7);
@@ -1139,6 +1368,16 @@ $("#clinikoForm").addEventListener("submit", async e=>{
       }
       const cur=new Set(S.weeks[S.wk].sel); S.clients.forEach(c=>c.selected=cur.has(c.id));
     }
+    if(dayInfo){
+      // Replace this day's Cliniko bookings with what Cliniko has now; keep anyone added by hand.
+      const p=dayPlan(S.dayDate), before=p.ids.length;
+      p.ids=p.ids.filter(id=>{ const c=S.clients.find(x=>x.id===id); return c && (!c.clinikoId || dayInfo.has(c.clinikoId)); });
+      S.clients.filter(c=>c.clinikoId && dayInfo.has(c.clinikoId)).forEach(c=>addToDay(S.dayDate, c.id, dayInfo.get(c.clinikoId)));
+      if(p.result && (p.ids.length!==before || p.result.stops && p.ids.some(id=>!p.result.stops[id]))) p.stale=true;
+      save(); ckProg(null); $("#dlgCliniko").close(); go("day");
+      dayMsg(`Imported <b>${dayInfo.size}</b> booking${dayInfo.size===1?"":"s"} from Cliniko${skipped?`. ${skipped} skipped because they have no address in Cliniko`:""}. Now press <b>Optimise order</b>.`);
+      return;
+    }
     save(); renderClients(); ckProg(null);
     $("#dlgCliniko").close();
     showImport(`Imported from Cliniko: <b>${added}</b> new${updated?`, ${updated} updated`:""}${skipped?`, ${skipped} skipped (no address in Cliniko)`:""}.${hadExamples?" Example clients removed.":""}${apptIds?(mode==="month"?" Patients are ticked in the weeks they're booked.":" Patients booked that week are ticked."):""}`);
@@ -1147,9 +1386,9 @@ $("#clinikoForm").addEventListener("submit", async e=>{
 });
 
 function showImport(html,bad){ const b=$("#importMsg"); b.className="banner "+(bad?"bad":"info"); b.innerHTML=html; b.hidden=false; }
-$("#btnTemplate").addEventListener("click", ()=>download("client-template.csv","Name,Parent/Guardian,Address,Suburb,Postcode,Phone,Email,Visit length (min),Available days,Notes\nJane Example,Sam Example,12 Example St,Southport,4215,0400 000 000,jane@example.com,60,\"Mon, Wed\",Gate code 1234\n","text/csv"));
+$("#btnTemplate").addEventListener("click", ()=>download("client-template.csv","Name,Parent/Guardian,Address,Suburb,Postcode,Phone,Email,Zone,Visit length (min),Available days,Notes\nJane Example,Sam Example,12 Example St,Southport,4215,0400 000 000,jane@example.com,Zone 1,60,\"Mon, Wed\",Gate code 1234\n","text/csv"));
 $("#btnExportClients").addEventListener("click", ()=>{
-  const lines=[["Name","Parent/Guardian","Address","Phone","Email","Visit length (min)","Available days","Notes"].join(",")].concat(S.clients.map(c=>[c.name,c.parent,c.address,c.phone,c.email,c.visitMin,c.days.join(" "),c.notes].map(csvCell).join(",")));
+  const lines=[["Name","Parent/Guardian","Address","Phone","Email","Zone","Visit length (min)","Available days","Notes"].join(",")].concat(S.clients.map(c=>[c.name,c.parent,c.address,c.phone,c.email,c.zone||"",c.visitMin,c.days.join(" "),c.notes].map(csvCell).join(",")));
   download("clients-backup.csv", lines.join("\n"), "text/csv");
 });
 
@@ -1709,10 +1948,265 @@ $("#btnMonthCsv").addEventListener("click", ()=>{
   download(`visits-${S.weeks[0].start}-to-${addDays(S.weeks[S.weeks.length-1].start,6)}.csv`, out.join("\n"), "text/csv");
 });
 
+/* ---------- Plan a day ----------
+   One day at a time (usually booked ~6 weeks ahead, one zone per day): pick the date, bring in who's booked,
+   and order the visits from the start address. Visits can be fixed to a time; the rest are fitted around them.
+   Saved per date in S.dayPlans[date] = {ids (visit order), pins {id:"HH:MM"}, booked {id:"HH:MM"}, zone, result, manual, stale}. */
+const DAY_DEF={first:"09:00", end:"16:00", apptMin:30, packMin:15, roundMin:5};
+function dayCfg(){ S.settings.dayCfg=Object.assign({...DAY_DEF}, S.settings.dayCfg||{}); return S.settings.dayCfg; }
+if(!S.dayPlans || typeof S.dayPlans!=="object") S.dayPlans={};
+function defaultDayDate(){ const d=new Date(); d.setDate(d.getDate()+42); while(d.getDay()===0||d.getDay()===6) d.setDate(d.getDate()+1); return isoLocal(d); }
+if(!S.dayDate) S.dayDate=defaultDayDate();
+function dayPlan(date=S.dayDate){
+  const p=S.dayPlans[date] ||= {ids:[], pins:{}, booked:{}, zone:"", result:null};
+  p.pins ||= {}; p.booked ||= {}; p.ids=p.ids.filter(id=>S.clients.some(c=>c.id===id));
+  return p;
+}
+function addToDay(date, id, booked){
+  const p=dayPlan(date); if(!p.ids.includes(id)){ p.ids.push(id); if(p.result) p.stale=true; }
+  if(booked) p.booked[id]=booked;
+}
+const zonesOf = () => [...new Set(S.clients.map(c=>(c.zone||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+const dayLabel = (iso,opt={weekday:"short",day:"numeric",month:"short"}) => new Date(iso+"T00:00:00").toLocaleDateString("en-AU",opt);
+const hhmm = sec => { const m=Math.round(sec/60); return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); };
+function dayMsg(html,bad){ const b=$("#dMsg"); b.className="banner "+(bad?"bad":"info"); b.innerHTML=`<span style="flex:1">${html}</span>`; b.hidden=!html; }
+
+// Read a date (and time, if there is one) from a spreadsheet cell. Day/month/year is read the Australian way.
+const MON={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+function parseWhen(s){
+  s=String(s??"").trim(); if(!s) return {};
+  const pad=n=>String(n).padStart(2,"0");
+  if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}.*(Z|[+-]\d{2}:?\d{2})$/.test(s)){ const t=new Date(s); if(!isNaN(t)) return {date:isoLocal(t), time:pad(t.getHours())+":"+pad(t.getMinutes())}; }
+  let y,mo,d,m,rest=s;
+  if((m=s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/))) [y,mo,d]=[+m[1],+m[2],+m[3]];
+  else if((m=s.match(/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/))) [d,mo,y]=[+m[1],+m[2],+m[3]];
+  else if((m=s.match(/(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3})[a-z]*\.?,?\s+(\d{4})/i))) [d,mo,y]=[+m[1],MON[m[2].toLowerCase()],+m[3]];
+  else if((m=s.match(/([a-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})/i))) [mo,d,y]=[MON[m[1].toLowerCase()],+m[2],+m[3]];
+  else if((m=s.match(/^(\d{5})(\.\d+)?$/))){ const t=new Date(Date.UTC(1899,11,30)+(+m[1])*864e5); [y,mo,d]=[t.getUTCFullYear(),t.getUTCMonth()+1,t.getUTCDate()];
+    if(m[2]){ const mins=Math.round(parseFloat("0"+m[2])*1440); return {date:`${y}-${pad(mo)}-${pad(d)}`, time:pad(Math.floor(mins/60))+":"+pad(mins%60)}; } }
+  if(m) rest=s.replace(m[0]," ");
+  if(y<100) y+=2000;
+  const date = y && mo && d && mo<=12 && d<=31 ? `${y}-${pad(mo)}-${pad(d)}` : null;
+  return {date, time:parseClock(rest)};
+}
+function parseClock(s){
+  s=String(s??"");
+  let m=s.match(/\b(\d{1,2})[:.](\d{2})(?::\d{2})?\s*([ap])\.?\s*m?\b/i) || s.match(/\b(\d{1,2})()\s*([ap])\.?\s*m\b/i) || s.match(/\b(\d{1,2}):(\d{2})\b()/);
+  if(!m) return null;
+  let h=+m[1]; const mi=+(m[2]||0), ap=(m[3]||"").toLowerCase();
+  if(ap==="p" && h<12) h+=12; if(ap==="a" && h===12) h=0;
+  return h<24 && mi<60 ? String(h).padStart(2,"0")+":"+String(mi).padStart(2,"0") : null;
+}
+
+let dayMx=null, dayBusy=false;
+async function computeDay(mode){   // mode "optimise" finds the best order; "keep" times the current order
+  const st=S.settings, cfg=dayCfg(), date=S.dayDate, p=dayPlan(date);
+  if(!p.ids.length || dayBusy) return;
+  if(!st.baseAddr){ dayMsg(`Add your start and finish address on the <a href="#home" data-go="home">Home</a> page first.`, true); return; }
+  dayBusy=true; $("#dGo").disabled=true;
+  const prog=(t,f)=>{ $("#dProgress").hidden=false; $("#dStatus").textContent=t; $("#dBar").style.width=Math.round(f*100)+"%"; };
+  try{
+    const cl=p.ids.map(id=>S.clients.find(c=>c.id===id)).filter(Boolean);
+    const need=[]; if(st.baseGeoFor!==st.baseAddr||st.baseLat==null) need.push("base");
+    const haveData=!!(await loadGeocoder());
+    cl.forEach(c=>{ if(c.lat==null||c.geo==="pending"||c.geo==="fail"||(haveData&&c.geo==="approx")) need.push(c); });
+    for(let k=0;k<need.length;k++){
+      prog(`Finding addresses on the map (${k+1} of ${need.length})…`, k/need.length*0.4);
+      const item=need[k], g=await locate(item==="base"?st.baseAddr:item.address);
+      if(item==="base"){ if(!g){ dayMsg(`Couldn't find the start address. Include the suburb or postcode on the <a href="#home" data-go="home">Home</a> page.`, true); return; }
+        st.baseLat=g.lat; st.baseLng=g.lng; st.baseGeoFor=st.baseAddr; }
+      else if(g){ item.lat=g.lat; item.lng=g.lng; item.geo=g.geo; } else item.geo="fail";
+    }
+    const ok=c=>c.lat!=null && c.geo!=="fail";
+    const use=cl.filter(ok).sort((a,b)=>a.id<b.id?-1:1);              // matrix order (stable, so re-timing a new order reuses it)
+    const notFound=cl.filter(c=>!ok(c)).map(c=>c.id);
+    const traffic=st.traffic!==false;
+    const key=[traffic,st.baseLat,st.baseLng].concat(use.map(c=>c.id+"@"+c.lat+","+c.lng)).join("|");
+    let mx=dayMx && dayMx.key===key ? dayMx.mx : null;
+    if(!mx){
+      prog("Working out drive times on the road network…",0.45);
+      mx=await matrix([{lat:st.baseLat,lng:st.baseLng}].concat(use.map(c=>({lat:c.lat,lng:c.lng}))), async(i,n)=>{ prog(`Working out drive times on the road network (${i} of ${n})…`,0.45+0.45*i/n); await sleep(0); }, traffic);
+      dayMx={key,mx};
+    }
+    prog("Finding the best order…",0.93); await sleep(20);
+    const o={n:use.length, durAt:mx.durAt, visitSec:cfg.apptMin*60, gapSec:cfg.packMin*60, roundSec:(+cfg.roundMin||0)*60,
+             startSec:toMin(cfg.first)*60, endSec:toMin(cfg.end)*60, pins:use.map(c=>p.pins[c.id]?toMin(p.pins[c.id])*60:null), returnHome:st.returnHome};
+    const cur=p.ids.map(id=>use.findIndex(c=>c.id===id)).filter(i=>i>=0);
+    const r = mode==="keep" ? DaySolver.evaluate(cur,o) : DaySolver.solve(o);
+    const busy=t=>traffic && GeoData.congestion(t)>=0.3;
+    const stops={}; let prev=0, dist=0, dep=r.leave;
+    r.stops.forEach(s=>{ const n=s.i+1, from=prev===0?r.leave:dep, m=mx.distAt(prev,n,from); dist+=m;
+      stops[use[s.i].id]={start:s.start, end:s.end, driveSec:s.driveSec, driveM:m, wait:s.wait, late:s.late, busy:busy(from)}; prev=n; dep=s.end; });
+    let ret=null;
+    if(r.stops.length && st.returnHome){ const m=mx.distAt(prev,0,dep); dist+=m; ret={sec:r.retSec, m, busy:busy(dep)}; }
+    p.ids=r.order.map(i=>use[i].id).concat(notFound);
+    p.result={at:new Date().toISOString(), stops, leave:r.leave, back:r.back, ret, drive:r.drive, dist, late:r.late, over:r.over,
+              estimated:mx.estimated, approx:use.filter(c=>c.geo==="approx").length, notFound, base:st.baseAddr};
+    p.manual = mode==="keep"; p.stale=false;
+    save();
+  } finally {
+    dayBusy=false; $("#dGo").disabled=false; $("#dProgress").hidden=true; renderDay();
+  }
+}
+// Re-time after a settings or order change, keeping a hand-set order as it is.
+function retimeDay(){ const p=dayPlan(); if(p.result && !p.stale) computeDay(p.manual?"keep":"optimise"); else renderDay(); }
+
+const GRIP=`<svg width="14" height="18" viewBox="0 0 14 18" aria-hidden="true"><g fill="currentColor"><circle cx="4" cy="3" r="1.6"/><circle cx="10" cy="3" r="1.6"/><circle cx="4" cy="9" r="1.6"/><circle cx="10" cy="9" r="1.6"/><circle cx="4" cy="15" r="1.6"/><circle cx="10" cy="15" r="1.6"/></g></svg>`;
+const PIN=`<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 1.5h6l-1 4.5 2.5 2.5v1.5h-4V15L8 15.5 7.5 15v-5h-4V8.5L6 6z" fill="currentColor"/></svg>`;
+function renderDay(){
+  const st=S.settings, cfg=dayCfg(), date=S.dayDate, p=dayPlan(date), r=p.result;
+  $("#dDate").value=date; $("#dStart").value=cfg.first; $("#dEnd").value=cfg.end; $("#dAppt").value=cfg.apptMin; $("#dPack").value=cfg.packMin; $("#dRound").value=String(cfg.roundMin);
+  $("#dReturn").checked=st.returnHome; $("#dBase").textContent=st.baseAddr||"no address yet";
+  const zs=zonesOf(); if(p.zone && !zs.includes(p.zone)) zs.push(p.zone);
+  $("#dZone").innerHTML=`<option value="">${zs.length?"Any zone":"No zones set yet (add them to clients)"}</option>`+zs.map(z=>`<option${z===p.zone?" selected":""}>${esc(z)}</option>`).join("");
+  // Other days already planned
+  const others=Object.keys(S.dayPlans).filter(d=>d!==date && S.dayPlans[d].ids.length && d>=addDays(todayIso(),-7)).sort();
+  $("#dSaved").hidden=!others.length;
+  $("#dSaved").innerHTML=`<span class="muted">Other planned days:</span>`+others.map(d=>{ const q=S.dayPlans[d]; return `<button class="chipbtn" data-dday="${d}">${esc(dayLabel(d))}${q.zone?" · "+esc(q.zone):""} <small class="muted">${q.ids.length}</small></button>`; }).join("");
+  $("#dCount").textContent=p.ids.length?`(${p.ids.length}) · ${dayLabel(date,{weekday:"long",day:"numeric",month:"long"})}`:"";
+  // Notices
+  const notes=[];
+  if(r){
+    if(p.stale) notes.push(`<div class="banner warn"><span style="flex:1">Visits have changed since the times were worked out.</span><button class="btn" data-dact="optimise">Optimise again</button></div>`);
+    else if(p.manual) notes.push(`<div class="banner info"><span style="flex:1">You've set this order by hand, so times follow it as is.</span><button class="btn" data-dact="optimise">Optimise again</button></div>`);
+    const late=p.ids.filter(id=>r.stops[id]&&r.stops[id].late);
+    if(late.length && !p.stale) notes.push(`<div class="banner bad">${late.map(id=>esc(client(id).name)).join(", ")} can't be reached by ${late.length===1?"their fixed time":"their fixed times"}. Try a later time, move ${late.length===1?"them":"them"} in the list, or remove someone.</div>`);
+    if(r.over>60 && !p.stale) notes.push(`<div class="banner warn">The day runs past your finish time of ${fmtTime(toMin(cfg.end))} by ${fmtDur(r.over)}.</div>`);
+    if(r.notFound.length) notes.push(`<div class="banner bad">Couldn't find ${r.notFound.map(id=>esc(client(id).name)).join(", ")} on the map, so they're left at the bottom without a time. Check the address in the client list.</div>`);
+    if(r.approx) notes.push(`<div class="banner warn">${r.approx===1?"One address":r.approx+" addresses"} could only be matched to the suburb, so drive times there are rough.</div>`);
+    if(r.estimated) notes.push(`<div class="banner warn">Drive times are estimated from straight-line distance because the road map didn't load.</div>`);
+  }
+  $("#dNotice").innerHTML=notes.join("");
+  const timed=r && !p.stale;
+  $("#dStats").hidden=!timed;
+  if(timed) $("#dStats").innerHTML=`
+    <div class="stat"><span class="muted">Leave</span><b>${fmtTime(r.leave/60)}</b></div>
+    <div class="stat"><span class="muted">${st.returnHome?"Home by":"Last visit ends"}</span><b>${fmtTime(r.back/60)}</b></div>
+    <div class="stat"><span class="muted">Driving</span><b>${fmtDur(r.drive)}</b></div>
+    <div class="stat"><span class="muted">Distance</span><b>${Math.round(r.dist/1000)} km</b></div>`;
+  // Visit list
+  const rows=[];
+  if(timed && p.ids.length) rows.push(`<li class="leg"><b>${fmtTime(r.leave/60)}</b> Leave ${esc(r.base)}</li>`);
+  p.ids.forEach((id,k)=>{
+    const c=client(id), s=r&&r.stops[id], pin=p.pins[id]||"", bk=p.booked[id];
+    if(timed && s) rows.push(`<li class="drv" aria-hidden="true">${fmtDur(s.driveSec)} drive · ${(s.driveM/1000).toFixed(1)} km${s.busy?' <span class="tag-busy">Peak traffic</span>':""}${s.wait>=300?` · ${fmtDur(s.wait)} spare before`:""}</li>`);
+    rows.push(`<li class="drow${pin?" pinned":""}${timed&&s&&s.late?" late":""}" data-id="${id}">
+      <button class="grip" type="button" aria-label="Move ${esc(c.name)} (drag, or use the up and down arrow keys)">${GRIP}</button>
+      <div class="tm">${timed&&s?fmtTime(s.start/60)+`<small>to ${fmtTime(s.end/60)}</small>`:'<span class="muted">–</span>'}</div>
+      <div class="who"><b>${k+1}. ${esc(c.name)}</b>
+        <div class="small">${esc(c.address)}${c.zone?` <span class="chip zone">${esc(c.zone)}</span>`:""}</div>
+        ${c.phone||bk?`<div class="small muted">${esc(c.phone||"")}${c.phone&&bk?" · ":""}${bk?"Booked "+esc(fmtTime(toMin(bk))):""}</div>`:""}
+      </div>
+      <div class="ctl">
+        <input type="time" step="300" data-pin="${id}" value="${esc(pin)}" aria-label="Fixed time for ${esc(c.name)} (leave blank to let the planner choose)" title="Fixed time (blank = planner chooses)">
+        <button class="pinbtn" type="button" data-pinbtn="${id}" aria-pressed="${!!pin}" title="${pin?"Unfix time":"Fix at this time"}" aria-label="${pin?"Unfix":"Fix"} ${esc(c.name)}'s time">${PIN}</button>
+        <button class="rm" type="button" data-rm="${id}" title="Remove from this day" aria-label="Remove ${esc(c.name)} from this day">×</button>
+      </div>
+      ${timed&&s&&s.late?`<div class="warn">Can't get here by ${fmtTime(toMin(pin))}. Earliest is ${fmtTime(s.start/60)}.</div>`:""}
+    </li>`);
+  });
+  if(timed && r.ret) rows.push(`<li class="drv" aria-hidden="true">${fmtDur(r.ret.sec)} drive · ${(r.ret.m/1000).toFixed(1)} km${r.ret.busy?' <span class="tag-busy">Peak traffic</span>':""}</li><li class="leg"><b>${fmtTime(r.back/60)}</b> Back at ${esc(r.base)}</li>`);
+  $("#dList").innerHTML=rows.join("") || `<li class="empty" style="padding:6px 0">No visits on this day yet. Import the day from Cliniko or a file, or add clients above.</li>`;
+  $("#dGo").textContent = r && !p.stale ? "Optimise again" : "Optimise order";
+  $("#dGo").disabled = !p.ids.length || dayBusy;
+  $("#dHint").textContent = !p.ids.length ? "Add the day's clients first." : Object.keys(p.pins).length ? `${Object.keys(p.pins).length} fixed time${Object.keys(p.pins).length===1?"":"s"}; everyone else is fitted around ${Object.keys(p.pins).length===1?"it":"them"}.` : "Tip: fix someone's time with the pin, or drag to reorder.";
+  $("#dOut").hidden=!timed || !p.ids.length;
+  if(timed){
+    const addrs=p.ids.filter(id=>r.stops[id]).map(id=>client(id).address), dest=st.returnHome?r.base:addrs.pop();
+    const q=new URLSearchParams({api:"1", origin:r.base, destination:dest||r.base, travelmode:"driving"}); if(addrs.length) q.set("waypoints",addrs.join("|"));
+    $("#dMaps").href="https://www.google.com/maps/dir/?"+q;
+  }
+}
+function setPin(id, t){ const p=dayPlan(); if(t) p.pins[id]=t; else delete p.pins[id]; save(); if(p.ids.length) computeDay("optimise"); else renderDay(); }
+
+$("#v-day").addEventListener("change", e=>{
+  const t=e.target, cfg=dayCfg(), p=dayPlan();
+  if(t.id==="dDate"){ if(t.value){ S.dayDate=t.value; dayMsg(""); } save(); renderDay(); return; }
+  if(t.id==="dZone"){ p.zone=t.value; save(); renderDay(); return; }
+  if(t.dataset.pin){ setPin(t.dataset.pin, t.value); return; }
+  if(t.id==="dReturn"){ S.settings.returnHome=t.checked; save(); retimeDay(); return; }
+  if(["dStart","dEnd","dAppt","dPack","dRound"].includes(t.id)){
+    cfg.first=$("#dStart").value||DAY_DEF.first; cfg.end=$("#dEnd").value||DAY_DEF.end;
+    cfg.apptMin=Math.max(5,+$("#dAppt").value||DAY_DEF.apptMin); cfg.packMin=Math.max(0,+$("#dPack").value||0); cfg.roundMin=+$("#dRound").value||0;
+    save(); retimeDay();
+  }
+});
+$("#v-day").addEventListener("click", e=>{
+  const p=dayPlan(), b=e.target.closest("button,[data-dday]"); if(!b) return;
+  if(b.dataset.dday){ S.dayDate=b.dataset.dday; dayMsg(""); save(); renderDay(); return; }
+  if(b.dataset.dact==="optimise" || b.id==="dGo"){ computeDay("optimise"); return; }
+  if(b.dataset.rm){ p.ids=p.ids.filter(x=>x!==b.dataset.rm); delete p.pins[b.dataset.rm]; delete p.booked[b.dataset.rm]; if(p.result) p.stale=true; if(!p.ids.length) p.result=null; save(); renderDay(); return; }
+  if(b.dataset.pinbtn){ const id=b.dataset.pinbtn; if(p.pins[id]) return setPin(id,"");
+    const s=p.result && !p.stale && p.result.stops[id]; setPin(id, s ? hhmm(s.start) : dayCfg().first); return; }
+  if(b.id==="dFileBtn") $("#dFile").click();
+  if(b.id==="dCliniko") openCliniko("day");
+  if(b.id==="dPrint") window.print();
+  if(b.id==="dClear"){ if(b.dataset.sure){ delete S.dayPlans[S.dayDate]; save(); renderDay(); } else { b.dataset.sure="1"; b.textContent="Tap again to clear"; setTimeout(()=>{ delete b.dataset.sure; b.textContent="Clear this day"; },3000); } }
+  if(b.id==="dCopy"){ const r=p.result, lines=[dayLabel(S.dayDate,{weekday:"long",day:"numeric",month:"long"})+(p.zone?" · "+p.zone:"")];
+    p.ids.forEach(id=>{ const s=r.stops[id], c=client(id); lines.push((s?fmtTime(s.start/60):"no time")+"  "+c.name+", "+c.address+(p.pins[id]?" (fixed)":"")); });
+    copyText(lines.join("\n"), b); }
+  if(b.id==="dCsv"){ const r=p.result, out=[["Date","Order","Start","End","Name","Address","Phone","Zone","Fixed time","Drive to here (min)","Drive (km)"].join(",")];
+    p.ids.forEach((id,k)=>{ const s=r.stops[id], c=client(id); out.push([S.dayDate,k+1,s?fmtTime(s.start/60):"",s?fmtTime(s.end/60):"",c.name,c.address,c.phone,c.zone||"",p.pins[id]?fmtTime(toMin(p.pins[id])):"",s?Math.round(s.driveSec/60):"",s?(s.driveM/1000).toFixed(1):""].map(csvCell).join(",")); });
+    download(`day-${S.dayDate}.csv`, out.join("\n"), "text/csv"); }
+});
+// Add a client from the list (matches in the day's zone first)
+let dAddItems=[], dAddActive=-1;
+function dAddRender(){
+  const q=$("#dAdd").value.trim().toLowerCase(), p=dayPlan(), list=$("#dAddList");
+  if(!q){ list.hidden=true; return; }
+  const words=q.split(/\s+/);
+  dAddItems=S.clients.filter(c=>!p.ids.includes(c.id) && words.every(w=>[c.name,c.address,c.zone].join(" ").toLowerCase().includes(w)))
+    .sort((a,b)=>((b.zone||"")===p.zone)-((a.zone||"")===p.zone) || a.name.localeCompare(b.name)).slice(0,8);
+  list.innerHTML=dAddItems.length ? dAddItems.map((c,i)=>`<li role="option" data-i="${i}" aria-selected="${i===dAddActive}"><b>${esc(c.name)}</b>${c.zone?` <span class="chip zone">${esc(c.zone)}</span>`:""}<small style="color:var(--muted);font-weight:400;white-space:normal;text-align:right">${esc(c.address)}</small></li>`).join("")
+    : `<li class="note">No match in your client list. Add new clients on the Clients page.</li>`;
+  list.hidden=false;
+}
+function dAddPick(i){ const c=dAddItems[i]; if(!c) return; addToDay(S.dayDate,c.id); save(); $("#dAdd").value=""; dAddActive=-1; $("#dAddList").hidden=true; renderDay(); $("#dAdd").focus(); }
+$("#dAdd").addEventListener("input", ()=>{ dAddActive=-1; dAddRender(); });
+$("#dAdd").addEventListener("keydown", e=>{
+  if(e.key==="ArrowDown"||e.key==="ArrowUp"){ e.preventDefault(); const n=dAddItems.length; if(!n) return; const dn=e.key==="ArrowDown"; dAddActive = dAddActive<0 ? (dn?0:n-1) : (dAddActive+(dn?1:n-1))%n; dAddRender(); }
+  else if(e.key==="Enter"){ e.preventDefault(); dAddPick(dAddActive<0?0:dAddActive); }
+  else if(e.key==="Escape"){ $("#dAddList").hidden=true; }
+});
+$("#dAddList").addEventListener("pointerdown", e=>{ const li=e.target.closest("[data-i]"); if(li){ e.preventDefault(); dAddPick(+li.dataset.i); } });
+$("#dAdd").addEventListener("blur", ()=>setTimeout(()=>$("#dAddList").hidden=true,150));
+// Drag to reorder (mouse, touch or pen), or arrow keys on the handle
+let drag=null;
+$("#dList").addEventListener("pointerdown", e=>{
+  const g=e.target.closest(".grip"); if(!g || dayBusy) return; e.preventDefault();
+  const li=g.closest(".drow"); g.setPointerCapture(e.pointerId);
+  const rows=$$("#dList .drow"); drag={li, y0:e.clientY, from:rows.indexOf(li), to:rows.indexOf(li), rows, mids:rows.map(r=>{ const b=r.getBoundingClientRect(); return b.top+b.height/2; })};
+  li.classList.add("dragging");
+});
+$("#dList").addEventListener("pointermove", e=>{
+  if(!drag) return; const dy=e.clientY-drag.y0; drag.li.style.transform=`translateY(${dy}px)`;
+  const y=drag.mids[drag.from]+dy; let to=0; drag.mids.forEach((m,i)=>{ if(i!==drag.from && y>m) to++; }); drag.to=to;
+  drag.rows.forEach((r,i)=>{ r.style.borderTop=""; r.style.borderBottom=""; });
+  if(to!==drag.from){ const others=drag.rows.filter(r=>r!==drag.li); const t=others[to]; if(t) t.style.borderTop="3px solid var(--accent)"; else others[others.length-1].style.borderBottom="3px solid var(--accent)"; }
+});
+function endDrag(){ if(!drag) return; const {from,to}=drag; drag.li.style.transform=""; drag.li.classList.remove("dragging"); drag.rows.forEach(r=>{ r.style.borderTop=""; r.style.borderBottom=""; }); drag=null; moveVisit(from,to); }
+$("#dList").addEventListener("pointerup", endDrag);
+$("#dList").addEventListener("pointercancel", endDrag);
+$("#dList").addEventListener("keydown", e=>{
+  const g=e.target.closest(".grip"); if(!g || (e.key!=="ArrowUp"&&e.key!=="ArrowDown")) return; e.preventDefault();
+  const i=$$("#dList .drow").indexOf(g.closest(".drow")); moveVisit(i, i+(e.key==="ArrowUp"?-1:1), true);
+});
+async function moveVisit(from, to, refocus){
+  const p=dayPlan(); if(to<0||to>=p.ids.length||from===to) return;
+  const [id]=p.ids.splice(from,1); p.ids.splice(to,0,id); save();
+  if(p.result && !p.stale) await computeDay("keep"); else renderDay();
+  if(refocus){ const g=$(`#dList .drow[data-id="${id}"] .grip`); if(g) g.focus(); }
+}
+$("#dFile").addEventListener("change", async e=>{
+  const f=e.target.files[0]; e.target.value=""; if(!f) return;
+  try{ importRows(await readSheet(f), {date:S.dayDate}); }
+  catch(err){ dayMsg(`Couldn't read ${esc(f.name)}. ${esc(err.message)}`, true); }
+});
+
 /* ---------- Boot ---------- */
 const start=(location.hash||"").slice(1);
 if(!start){ stashWeek(); const t=todayIso(), i=S.weeks.findIndex(w=>w.schedule && w.schedule.days.some(d=>d.date===t && d.stops.length)); if(i>=0 && i!==S.wk) loadWeek(i); }
-go(["home","clients","week","schedule","month"].includes(start)?start:"home");
+go(["home","day","clients","week","schedule","month"].includes(start)?start:"home");
 })();
 </script>
 </body>
