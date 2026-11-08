@@ -285,7 +285,7 @@ select.freq{min-height:34px;padding:4px 28px 4px 12px;font-size:.85rem;font-weig
 .ddclients li .pinat{font-size:.75rem;font-weight:700;color:var(--accent);white-space:nowrap}
 .ddclients .grip,.ddslots .grip{border:0;background:none;cursor:grab;touch-action:none;color:var(--muted);padding:4px;border-radius:6px;display:grid;place-items:center}
 .ddclients .grip:hover{background:var(--soft-2)}
-.ddslots{list-style:none;margin:0;padding:0;display:grid;gap:4px;max-height:46vh;overflow-y:auto}
+.ddslots{list-style:none;margin:0;padding:0;display:grid;grid-auto-rows:max-content;align-content:start;gap:4px;max-height:46vh;overflow-y:auto}
 .ddslots li{display:grid;grid-template-columns:62px 1fr;gap:8px;align-items:center;font-size:.88rem}
 .ddslots .t{font-weight:700;font-variant-numeric:tabular-nums;color:var(--muted);text-align:right}
 .ddslots .drop{min-height:38px;border:1.5px dashed var(--line-strong);border-radius:10px;padding:4px 8px;display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.8rem;transition:background .12s,border-color .12s}
@@ -295,6 +295,9 @@ select.freq{min-height:34px;padding:4px 28px 4px 12px;font-size:.85rem;font-weig
 .ddslots .drop .tag{margin-left:auto;font-size:.72rem;color:var(--accent);font-weight:700}
 .ddslots .drop .fixbtn{margin-left:auto;font-size:.78rem;padding:2px 6px;min-height:0}
 .ddslots li.edge{min-height:24px}
+.ddslots li.travel{color:var(--muted)}
+.ddslots li.travel .small{padding:0 0 0 10px;border-left:2px dotted var(--line-strong);margin-left:14px;line-height:1.9}
+.ddslots li.travel .peak{color:var(--warn);font-weight:700}
 .ddslots .drop .chip.zone{font-size:.68rem}
 .ddslots .drop .x{border:0;background:none;cursor:pointer;color:var(--muted);font-size:1.1rem;width:28px;height:28px;border-radius:50%}
 .ddslots .drop .x:hover{background:var(--bad-soft);color:var(--bad)}
@@ -2670,7 +2673,7 @@ function renderDayDlg(){
   // with the empty slots that don't clash with a visit left as drop targets.
   const byTime={}; Object.entries(p.pins).forEach(([id,t])=>{ if(p.ids.includes(id)) (byTime[t] ||= []).push(id); });
   const autoAt={}, busyRanges=[];
-  if(r) p.ids.forEach(id=>{ const st=r.stops[id]; if(!st) return; busyRanges.push([st.start, st.end]); if(!p.pins[id]) (autoAt[hhmm(st.start)] ||= []).push(id); });
+  if(r) p.ids.forEach(id=>{ const st=r.stops[id]; if(!st) return; busyRanges.push([st.start-(st.driveSec||0), st.end]); if(!p.pins[id]) (autoAt[hhmm(st.start)] ||= []).push(id); });
   const clash=t=>{ const sec=toMin(t)*60; return busyRanges.some(([a,b2])=>sec>a-15*60 && sec<b2); };
   const times=new Set(ddSlotTimes(p).filter(t=>!r || byTime[t] || !clash(t))); Object.keys(autoAt).forEach(t=>times.add(t));
   const row=(id,t,fixed)=>{ const c=client(id), st=r&&r.stops[id];
@@ -2684,7 +2687,18 @@ function renderDayDlg(){
     const cls=fixed.length?" full":auto.length?" full auto":"";
     return `<li data-k="${t}"><span class="t">${fmtTime(toMin(t))}</span><div class="drop${cls}" data-slot="${t}">${fixed.length||auto.length? fixed.map(id=>row(id,t,true)).concat(auto.map(id=>row(id,t,false))).join("") : "Drop a client here"}</div></li>`; });
   // Leave and Home rows sit in time order among the slots
-  $("#ddSlots").innerHTML=[leaveRow,backRow,...slotRows].filter(Boolean).map(h=>[h.match(/data-k="([^"]*)"/)[1],h]).sort((a,b2)=>a[0]<b2[0]?-1:a[0]>b2[0]?1:0).map(x=>x[1]).join("");
+  // Travel between visits: one row per drive, placed just after the visit (or leaving home) it starts from
+  const travelRows=[];
+  if(r && p.ids.length){
+    const ordered=p.ids.filter(id=>r.stops[id]).sort((a,b2)=>r.stops[a].start-r.stops[b2].start);
+    let from=r.leave;
+    ordered.forEach(id=>{ const st=r.stops[id];
+      travelRows.push(travelRow(from, st.driveSec, st.driveM, st.busy, st.wait)); from=st.end; });
+    if(r.ret) travelRows.push(travelRow(from, r.ret.sec, r.ret.m, r.ret.busy, 0, true));
+  }
+  function travelRow(dep, sec, m, busy, wait, home){
+    return `<li class="travel" data-k="${hhmm(dep)}~"><span class="t"></span><span class="small">🚗 ${fmtDur(sec)} drive${m?` · ${(m/1000).toFixed(m<10000?1:0)} km`:""}${busy?' <span class="peak">peak traffic</span>':""}${wait>=300?` · ${fmtDur(wait)} spare`:""}${home?" home":""}</span></li>`; }
+  $("#ddSlots").innerHTML=[leaveRow,backRow,...travelRows,...slotRows].filter(Boolean).map(h=>[h.match(/data-k="([^"]*)"/)[1],h]).sort((a,b2)=>a[0]<b2[0]?-1:a[0]>b2[0]?1:0).map(x=>x[1]).join("");
   const free=p.ids.filter(id=>!p.pins[id]).length;
   $("#ddFree").textContent=r&&p.ids.length?"Best order filled in":p.ids.length?`${free} to fit in around ${Object.keys(byTime).length?"them":"the day"}`:"";
   $("#ddRoute").innerHTML = p.result&&p.stale&&p.ids.length ? `<p class="muted small" style="margin:0">Changed since the last route. Press Find most efficient route to update the times.</p>` : "";
