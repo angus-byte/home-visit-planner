@@ -232,6 +232,7 @@ details.card summary{cursor:pointer;font-weight:600}
 .chip.zone{--zc:#5c6b7a;background:color-mix(in srgb,var(--zc) 13%,#fff);color:color-mix(in srgb,var(--zc) 80%,#000);display:inline-flex;align-items:center;gap:5px}
 .chip.zone i{width:8px;height:8px;border-radius:50%;background:var(--zc)}
 .zsel{display:inline-block}
+select.freq{min-height:34px;padding:4px 28px 4px 12px;font-size:.85rem;font-weight:600;border-radius:999px;width:auto;min-width:112px}
 .zsel select{min-height:34px;padding:4px 28px 4px 12px;font-size:.85rem;font-weight:600;border-radius:999px;width:auto;max-width:170px;background-color:color-mix(in srgb,var(--zc) 14%,#fff);border-color:color-mix(in srgb,var(--zc) 45%,var(--line-strong));color:color-mix(in srgb,var(--zc) 70%,var(--ink))}
 #dlgZone .zrow{display:grid;grid-template-columns:44px 1fr 70px 38px;gap:8px;align-items:center}
 #dlgZone input[type=color]{width:44px;height:40px;padding:2px;border:1px solid var(--line-strong);border-radius:10px;background:#fff;cursor:pointer}
@@ -474,7 +475,7 @@ nav.steps button{border-radius:999px}
   </div>
   <div class="tablewrap">
     <table>
-      <thead><tr><th>Name</th><th>Address</th><th>Zone</th><th class="hide-sm">Phone</th><th>Visit</th><th class="hide-sm">Days</th><th>Map</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>Address</th><th>Zone</th><th>Frequency</th><th class="hide-sm">Phone</th><th>Visit</th><th class="hide-sm">Days</th><th>Map</th><th></th></tr></thead>
       <tbody id="clientRows"></tbody>
     </table>
   </div>
@@ -632,7 +633,7 @@ nav.steps button{border-radius:999px}
       <label class="f">Visit length (min)<input type="number" id="cLen" min="10" max="240" step="5" value="60"></label>
       <label class="f">Available days<input type="text" id="cDays" placeholder="Any day, or e.g. Mon, Wed"></label>
       <label class="f">Zone<select id="cZone"></select></label>
-      <label class="f">How often<select id="cEvery"><option value="0">When I tick them</option><option value="1">Every week</option><option value="2">Every 2 weeks</option><option value="3">Every 3 weeks</option><option value="4">Every 4 weeks</option></select></label>
+      <label class="f">How often<select id="cEvery"></select></label>
     </div>
     <label class="f">Notes<textarea id="cNotes"></textarea></label>
     <div class="row spread">
@@ -1207,7 +1208,8 @@ function loadWeek(i){
   save();
 }
 /* Repeat visits: a client set to "every N weeks" who is ticked in one week is ticked N, 2N... weeks later too. */
-const EVERY = {1:"Every week",2:"Every 2 weeks",3:"Every 3 weeks",4:"Every 4 weeks"};
+const EVERY = {1:"Every week",2:"Every 2 weeks",3:"Every 3 weeks",4:"Every 4 weeks",5:"Every 5 weeks",6:"Every 6 weeks",8:"Every 8 weeks",10:"Every 10 weeks",12:"Every 12 weeks"};
+const everyOptions = (cur, short) => `<option value="0">As needed</option>`+Object.entries(EVERY).map(([n,l])=>`<option value="${n}"${+n===+cur?" selected":""}>${short?(+n===1?"Weekly":n+" weeks"):l}</option>`).join("");
 function setWeekSel(j, id, on){
   if(j===S.wk){ const c=S.clients.find(x=>x.id===id); if(c) c.selected=on; return; }
   const w=S.weeks[j], has=w.sel.includes(id);
@@ -1286,15 +1288,16 @@ function renderClients(){
   $("#clientCount").textContent = `${S.clients.length} client${S.clients.length===1?"":"s"}`;
   $("#clientRows").innerHTML = list.length ? list.map(c=>`
     <tr>
-      <td><b>${esc(c.name)}</b>${c.example?' <span class="chip ex">Example</span>':''}${+c.every?` <span class="chip rep">${EVERY[c.every]}</span>`:''}${c.notes&&!c.example?`<div class="muted small">${esc(c.notes)}</div>`:''}</td>
+      <td><b>${esc(c.name)}</b>${c.example?' <span class="chip ex">Example</span>':''}${c.notes&&!c.example?`<div class="muted small">${esc(c.notes)}</div>`:''}</td>
       <td>${esc(c.address)}</td>
       <td>${zoneSelect(c)}</td>
+      <td><select class="freq" data-every="${c.id}" aria-label="Visit frequency for ${esc(c.name)}">${everyOptions(+c.every||0, true)}</select></td>
       <td class="hide-sm num">${esc(c.phone)}</td>
       <td class="num">${c.visitMin} min</td>
       <td class="hide-sm">${c.days.length? esc(c.days.join(", ")) : '<span class="muted">Any</span>'}</td>
       <td>${c.geo==="ok"?'<span class="chip ok">Found</span>': c.geo==="street"?'<span class="chip ok">Street</span>': c.geo==="approx"?'<span class="chip">Suburb only</span>': c.geo==="fail"?'<span class="chip bad">Not found</span>':'<span class="chip">Pending</span>'}</td>
       <td><button class="btn link" data-edit="${c.id}">Edit</button></td>
-    </tr>`).join("") : `<tr><td colspan="8" class="empty">${S.clients.length?"No clients match that search.":"No clients yet. Import a spreadsheet or add one."}</td></tr>`;
+    </tr>`).join("") : `<tr><td colspan="9" class="empty">${S.clients.length?"No clients match that search.":"No clients yet. Import a spreadsheet or add one."}</td></tr>`;
 }
 $("#search").addEventListener("input", renderClients);
 $("#btnClearExamples").addEventListener("click", ()=>{ S.clients=S.clients.filter(c=>!c.example); clearPlans(); save(); renderClients(); });
@@ -1307,7 +1310,7 @@ function openDlg(c){
   editing=c;
   $("#dlgTitle").textContent = c? "Edit client":"Add client";
   $("#cName").value=c?.name||""; $("#cAddr").value=c?.address||""; $("#cPhone").value=c?.phone||""; $("#cEmail").value=c?.email||"";
-  $("#cParent").value=c?.parent||""; $("#cLen").value=c?.visitMin||60; $("#cDays").value=c?.days?.join(", ")||""; $("#cNotes").value=c?.notes||""; $("#cEvery").value=String(+c?.every||0);
+  $("#cParent").value=c?.parent||""; $("#cLen").value=c?.visitMin||60; $("#cDays").value=c?.days?.join(", ")||""; $("#cNotes").value=c?.notes||""; $("#cEvery").innerHTML=everyOptions(+c?.every||0);
   $("#cZone").innerHTML=zoneOptions(c?.zone||""); $("#cZone").value=c?.zone||"";
   $("#cDelete").hidden=!c; $("#delConfirm").hidden=true;
   $("#dlg").showModal();
@@ -1360,6 +1363,13 @@ function parseCSV(text){
   if(cell||row.length){ row.push(cell); rows.push(row); }
   return rows.filter(r=>r.some(x=>String(x).trim()));
 }
+// "6 weeks", "every 4 wks", "fortnightly", "monthly", "6" -> weeks between visits (0 = as needed)
+function parseEvery(v){
+  const t=String(v||"").toLowerCase().trim(); if(!t) return 0;
+  if(/fortnight/.test(t)) return 2; if(/^weekly|every week$/.test(t)) return 1;
+  let n=parseFloat(t.replace(/[^0-9.]/g,"")); if(/month/.test(t)) n=Math.round((n||1)*4.33); else if(/day/.test(t)) n=Math.round(n/7);
+  if(!(n>0)) return 0; const keys=Object.keys(EVERY).map(Number); return keys.reduce((a,k)=>Math.abs(k-n)<Math.abs(a-n)?k:a, keys[0]);
+}
 function mapHeaders(h){
   const H=h.map(x=>String(x).toLowerCase().trim()), find=(...keys)=>H.findIndex(x=>keys.some(k=>x.includes(k)));
   const m = {
@@ -1370,6 +1380,7 @@ function mapHeaders(h){
     phone: find("phone","mobile","contact number","tel"), email: find("email","e-mail"), notes: find("note","comment"),
     len: find("length","duration","minutes","mins"), days: find("days","available","availability","day"),
     zone: H.findIndex(x=>/\b(zone|area|region|territory)\b/.test(x)),
+    every: H.findIndex(x=>/frequen|how often|interval|recall|repeat/.test(x)),
     date: H.findIndex(x=>/date|starts|when/.test(x) && !/birth|dob|created|updated|modified|archiv|referral|last|next/.test(x))
   };
   if(m.date<0) m.date=H.findIndex(x=>/appointment/.test(x) && !/type|length|duration|note|status|time|id/.test(x));
@@ -1404,11 +1415,12 @@ function importRows(rows, opt={}){
     let c=ex;
     if(address){
       const len=parseInt(get(r,m.len),10);
-      const rec={name,address,phone:get(r,m.phone),email:get(r,m.email),parent:get(r,m.parent),notes:get(r,m.notes),zone:get(r,m.zone),visitMin: len>=10? len:60, days:parseDays(get(r,m.days)), example:false};
+      const rec={name,address,phone:get(r,m.phone),email:get(r,m.email),parent:get(r,m.parent),notes:get(r,m.notes),zone:get(r,m.zone),visitMin: len>=10? len:60, days:parseDays(get(r,m.days)), every:parseEvery(get(r,m.every)), example:false};
       if(ex){
         if(ex.address!==address){ ex.geo="pending"; ex.lat=ex.lng=null; }
         // Only overwrite what this file actually has, so an appointment list doesn't blank out phone numbers or zones.
         for(const k of ["name","address","phone","email","parent","notes","zone"]) if(rec[k]) ex[k]=rec[k];
+        if(rec.every) ex.every=rec.every;
         if(len>=10) ex.visitMin=len; if(m.days>=0) ex.days=rec.days; ex.example=false;
         if(!addedIds.has(ex.id)) updatedIds.add(ex.id);
       } else { c={id:uid(),selected:false,geo:"pending",...rec}; S.clients.push(c); addedIds.add(c.id); }
@@ -2480,6 +2492,8 @@ $("#dFile").addEventListener("change", async e=>{
 });
 
 $("#btnZones").addEventListener("click", ()=>openZones());
+$("#clientRows").addEventListener("change", e=>{ const id=e.target.dataset.every; if(!id) return; const c=S.clients.find(x=>x.id===id); if(!c) return;
+  const every=+e.target.value||0; if((+c.every||0)===every) return; c.every=every; relayRepeat(c); save(); });
 $("#clientRows").addEventListener("change", e=>{ const id=e.target.dataset.zone; if(!id) return; const c=S.clients.find(x=>x.id===id);
   if(e.target.value==="__add"){ e.target.value=c.zone||""; openZones(c); return; }
   c.zone=e.target.value; afterZones(); });
