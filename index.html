@@ -94,6 +94,10 @@ textarea{resize:vertical;min-height:72px}
 .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:#fff;box-shadow:var(--shadow-1)}
 table{border-collapse:collapse;width:100%;font-size:.95rem}
 th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+.sortbtn{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit}
+.sortbtn .arr{font-size:.6rem;opacity:.45;letter-spacing:-1px}
+.sortbtn:hover,.sortbtn.on{color:var(--ink)}.sortbtn.on .arr{opacity:1;color:var(--accent)}
+.sortbtn:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
 th{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);background:var(--soft);position:sticky;top:0}
 tbody tr{transition:background .12s}
 tbody tr:hover{background:#fafcfc}
@@ -457,7 +461,6 @@ nav.steps button{border-radius:999px}
     </div>
     <div class="row noprint">
       <button class="btn" id="btnZones">Zones</button>
-      <button class="btn" id="btnAutoZone">Auto-assign zones</button>
       <button class="btn green" id="btnCliniko">Import from Cliniko</button>
       <details class="more" id="moreAdd">
         <summary class="btn">More</summary>
@@ -476,11 +479,12 @@ nav.steps button{border-radius:999px}
   <div id="importMsg" class="banner info" hidden></div>
     <div class="row">
     <input type="search" id="search" placeholder="Search name, suburb or notes" style="flex:1;min-width:200px" aria-label="Search clients">
+    <button class="btn" id="btnAutoZone">Auto-assign zones</button>
     <span class="muted small" id="clientCount"></span>
   </div>
   <div class="tablewrap">
     <table>
-      <thead><tr><th>Name</th><th>Address</th><th>Zone</th><th>Frequency</th><th class="hide-sm">Phone</th><th>Visit</th><th class="hide-sm">Days</th><th>Map</th><th></th></tr></thead>
+      <thead id="clientHead"><tr><th data-sort="name">Name</th><th data-sort="address">Address</th><th data-sort="zone">Zone</th><th data-sort="every">Frequency</th><th class="hide-sm" data-sort="phone">Phone</th><th data-sort="visit">Visit</th><th class="hide-sm" data-sort="days">Days</th><th data-sort="map">Map</th><th></th></tr></thead>
       <tbody id="clientRows"></tbody>
     </table>
   </div>
@@ -1164,7 +1168,7 @@ const EXAMPLES = [
  ["Thomas Evans","400 Golden Four Dr, Tugun QLD 4224",-28.1458,153.49765,60,""]
 ];
 function exampleClients(){
-  return EXAMPLES.map(([name,address,lat,lng,len,days],i)=>({id:uid(),name,address,phone:"07 5500 0"+String(100+i),parent:"",notes:"Example client",visitMin:len,days:parseDays(days),lat,lng,geo:"ok",selected:i<14,example:true}));
+  return EXAMPLES.map(([name,address,lat,lng,len,days],i)=>({id:uid(),name,address,phone:"07 5500 0"+String(100+i),parent:"",notes:"Example client",visitMin:30,every:1,days:parseDays(days),lat,lng,geo:"ok",selected:i<14,example:true}));
 }
 
 /* ---------- State ---------- */
@@ -1182,6 +1186,8 @@ let S;
 try { S = JSON.parse(localStorage.getItem(STORE)) || defaults(); } catch(e){ S = defaults(); }
 S.settings = Object.assign(defaults().settings, S.settings||{});
 (()=>{ const ex=new Map(EXAMPLES.map(e=>[e[0],e])); S.clients.forEach(c=>{ const e=c.example&&ex.get(c.name); if(e){ c.lat=e[2]; c.lng=e[3]; c.geo="ok"; } }); })();
+// Defaults changed to 30-minute, weekly visits: bring example clients and clients with no frequency set into line once.
+if(!S.settings.mig30w){ S.settings.mig30w=1; S.clients.forEach(c=>{ if(c.example) c.visitMin=30; if(c.every==null||c.every===0) c.every=1; }); }
 if(S.schedule && S.schedule.lineFormat!=="lnglat") S.schedule=null;   // rebuild schedules made before real road routes
 /* ---------- Month plan: several weeks, each with its own days, hours, clients and schedule ----------
    The rest of the app works on "the current week" through S.settings.weekStart/days/start/end,
@@ -1288,7 +1294,10 @@ function csvCell(v){ v=String(v??""); return /[",\n]/.test(v) ? '"'+v.replace(/"
 /* ---------- Clients view ---------- */
 function renderClients(){
   const q = $("#search").value.trim().toLowerCase();
-  const list = S.clients.filter(c=>!q || [c.name,c.address,c.notes,c.parent,c.zone].join(" ").toLowerCase().includes(q));
+  const list = sortClients(S.clients.filter(c=>!q || [c.name,c.address,c.notes,c.parent,c.zone].join(" ").toLowerCase().includes(q)));
+  $$("#clientHead th[data-sort]").forEach(th=>{ const k=th.dataset.sort, on=S.clientSort&&S.clientSort.key===k;
+    th.setAttribute("aria-sort", on?(S.clientSort.dir>0?"ascending":"descending"):"none");
+    th.innerHTML=`<button type="button" class="sortbtn${on?" on":""}" data-sortkey="${k}">${esc(th.dataset.label ||= th.textContent)}<span class="arr" aria-hidden="true">${on?(S.clientSort.dir>0?"▲":"▼"):"▲▼"}</span></button>`; });
   $("#exampleBanner").hidden = !S.clients.some(c=>c.example);
   $("#clientCount").textContent = `${S.clients.length} client${S.clients.length===1?"":"s"}`;
   $("#clientRows").innerHTML = list.length ? list.map(c=>`
@@ -1305,6 +1314,17 @@ function renderClients(){
     </tr>`).join("") : `<tr><td colspan="9" class="empty">${S.clients.length?"No clients match that search.":"No clients yet. Import a spreadsheet or add one."}</td></tr>`;
 }
 $("#search").addEventListener("input", renderClients);
+// Sort the client list by any column: click once for A to Z / low to high, again to reverse, a third time for the original order.
+const GEO_RANK={ok:0,street:1,approx:2,pending:3,fail:4};
+function sortClients(list){
+  const so=S.clientSort; if(!so) return list;
+  const key={name:c=>c.name.toLowerCase(), address:c=>(suburbOf(c.address)+" "+c.address).toLowerCase(), zone:c=>(c.zone||"\uffff").toLowerCase(),
+    every:c=>+c.every||99, phone:c=>c.phone||"\uffff", visit:c=>+c.visitMin||0, days:c=>c.days.length?c.days.map(d=>DAY_KEYS.indexOf(d)).sort().join(""):"9", map:c=>GEO_RANK[c.geo]??3}[so.key];
+  if(!key) return list;
+  return list.slice().sort((a,b)=>{ const x=key(a), y=key(b); return (x<y?-1:x>y?1:a.name.localeCompare(b.name))*so.dir; });
+}
+$("#clientHead").addEventListener("click", e=>{ const b=e.target.closest("[data-sortkey]"); if(!b) return; const k=b.dataset.sortkey, so=S.clientSort;
+  S.clientSort = !so||so.key!==k ? {key:k,dir:1} : so.dir>0 ? {key:k,dir:-1} : null; save(); renderClients(); });
 $("#btnClearExamples").addEventListener("click", ()=>{ S.clients=S.clients.filter(c=>!c.example); clearPlans(); save(); renderClients(); });
 $("#clientRows").addEventListener("click", e=>{ const id=e.target.dataset.edit; if(id) openDlg(S.clients.find(c=>c.id===id)); });
 $("#btnAdd").addEventListener("click", ()=>openDlg(null));
@@ -1315,7 +1335,7 @@ function openDlg(c){
   editing=c;
   $("#dlgTitle").textContent = c? "Edit client":"Add client";
   $("#cName").value=c?.name||""; $("#cAddr").value=c?.address||""; $("#cPhone").value=c?.phone||""; $("#cEmail").value=c?.email||"";
-  $("#cParent").value=c?.parent||""; $("#cLen").value=c?.visitMin||60; $("#cDays").value=c?.days?.join(", ")||""; $("#cNotes").value=c?.notes||""; $("#cEvery").innerHTML=everyOptions(+c?.every||0);
+  $("#cParent").value=c?.parent||""; $("#cLen").value=c?.visitMin||30; $("#cDays").value=c?.days?.join(", ")||""; $("#cNotes").value=c?.notes||""; $("#cEvery").innerHTML=everyOptions(c?(+c.every||0):1);
   $("#cZone").innerHTML=zoneOptions(c?.zone||""); $("#cZone").value=c?.zone||"";
   $("#cDelete").hidden=!c; $("#delConfirm").hidden=true;
   $("#dlg").showModal();
@@ -1329,7 +1349,7 @@ $("#clientForm").addEventListener("submit", e=>{
   if(!addr||!name) return;
   const c = editing || {id:uid(), selected:true, geo:"pending"};
   if(c.address!==addr){ c.geo="pending"; c.lat=c.lng=null; }
-  Object.assign(c,{name,address:addr,phone:$("#cPhone").value.trim(),email:$("#cEmail").value.trim(),parent:$("#cParent").value.trim(),visitMin:Math.max(10,+$("#cLen").value||60),days:parseDays($("#cDays").value),notes:$("#cNotes").value.trim(),zone:$("#cZone").value==="__add"?(c.zone||""):$("#cZone").value,example:false});
+  Object.assign(c,{name,address:addr,phone:$("#cPhone").value.trim(),email:$("#cEmail").value.trim(),parent:$("#cParent").value.trim(),visitMin:Math.max(10,+$("#cLen").value||30),days:parseDays($("#cDays").value),notes:$("#cNotes").value.trim(),zone:$("#cZone").value==="__add"?(c.zone||""):$("#cZone").value,example:false});
   const every=+$("#cEvery").value||0, changed=(+c.every||0)!==every; c.every=every;
   if(!editing) S.clients.push(c);
   if(changed){ if(!editing) stashWeek(); relayRepeat(c); }
@@ -1420,12 +1440,12 @@ function importRows(rows, opt={}){
     let c=ex;
     if(address){
       const len=parseInt(get(r,m.len),10);
-      const rec={name,address,phone:get(r,m.phone),email:get(r,m.email),parent:get(r,m.parent),notes:get(r,m.notes),zone:get(r,m.zone),visitMin: len>=10? len:60, days:parseDays(get(r,m.days)), every:parseEvery(get(r,m.every)), example:false};
+      const rec={name,address,phone:get(r,m.phone),email:get(r,m.email),parent:get(r,m.parent),notes:get(r,m.notes),zone:get(r,m.zone),visitMin: len>=10? len:30, days:parseDays(get(r,m.days)), every:m.every>=0?parseEvery(get(r,m.every)):1, example:false};
       if(ex){
         if(ex.address!==address){ ex.geo="pending"; ex.lat=ex.lng=null; }
         // Only overwrite what this file actually has, so an appointment list doesn't blank out phone numbers or zones.
         for(const k of ["name","address","phone","email","parent","notes","zone"]) if(rec[k]) ex[k]=rec[k];
-        if(rec.every) ex.every=rec.every;
+        if(m.every>=0) ex.every=rec.every;
         if(len>=10) ex.visitMin=len; if(m.days>=0) ex.days=rec.days; ex.example=false;
         if(!addedIds.has(ex.id)) updatedIds.add(ex.id);
       } else { c={id:uid(),selected:false,geo:"pending",...rec}; S.clients.push(c); addedIds.add(c.id); }
@@ -1545,7 +1565,7 @@ $("#clinikoForm").addEventListener("submit", async e=>{
       if(ex){
         if(ex.address!==rec.address){ ex.geo="pending"; ex.lat=ex.lng=null; }
         Object.assign(ex, rec, {phone:rec.phone||ex.phone, email:rec.email||ex.email||""}); if(apptIds) ex.selected=true; updated++;
-      } else { S.clients.push({id:uid(),selected:!!apptIds,geo:"pending",parent:"",notes:"",visitMin:60,days:[],example:false,...rec}); added++; }
+      } else { S.clients.push({id:uid(),selected:!!apptIds,geo:"pending",parent:"",notes:"",visitMin:30,every:1,days:[],example:false,...rec}); added++; }
     }
     if(apptIds) S.clients.forEach(c=>{ if(c.clinikoId && !apptIds.has(c.clinikoId)) c.selected=false; });
     if(weekOf){
