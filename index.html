@@ -120,6 +120,7 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .homedays{display:grid;gap:6px}
 .homedays .hd{display:grid;grid-template-columns:12px 90px 1fr auto;gap:10px;align-items:center;font-size:.9rem;padding:8px 10px;border-radius:10px;background:var(--soft)}
 .homedays .hd i{width:10px;height:10px;border-radius:50%}
+.homedays .hd.numd{grid-template-columns:22px 70px 1fr auto}
 .homeweeks{display:grid;gap:6px}
 .homeweeks button{font:inherit;text-align:left;display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px 14px;cursor:pointer;transition:background .15s,transform .08s}
 .homeweeks button:hover{background:var(--soft)}
@@ -131,6 +132,9 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px}
 #map{border-radius:var(--r);border:1px solid var(--line);background:#fff;overflow:hidden;position:relative;box-shadow:var(--shadow-2)}
 #map.live{height:min(68vh,600px)}
+.homemap{height:340px;border-radius:12px;border:1px solid var(--line);overflow:hidden;position:relative}
+.homemap .pin{border:2.5px solid #fff;cursor:pointer;padding:0;width:26px;height:26px;line-height:21px;font-size:12px}
+.homemap .pin.home{background:var(--ink);color:#fff;border-radius:8px;cursor:default}
 #map .pin{border:2.5px solid #fff;cursor:pointer;padding:0;width:28px;height:28px;line-height:23px;font-size:13px;transition:transform .12s}
 #map .pin:hover{transform:scale(1.15)}
 #map .pin.home{background:var(--ink);color:#fff;border-radius:8px;cursor:default}
@@ -366,6 +370,7 @@ nav.steps button{border-radius:999px}
           <div class="row" id="homeWeekBtns"></div>
         </div>
         <div class="stats" id="homeStats"></div>
+        <div id="homeMap" class="homemap" hidden></div>
         <div id="homeDays" class="homedays"></div>
       </div>
       <div class="card" style="display:grid;gap:10px">
@@ -1636,8 +1641,8 @@ function renderHome(){
   if(tp && tp.ids.length){
     $("#homeWeekBtns").innerHTML=`<button class="btn${tr?"":" primary"}" data-hometoday="1">${tr?"Open day":"Plan today"}</button>`;
     $("#homeStats").innerHTML=stat("Visits",tp.ids.length)+(tr?stat("Leave",fmtTime(tr.leave/60))+stat("Home by",fmtTime(tr.back/60))+stat("Driving",fmtDur(tr.drive)):"");
-    $("#homeDays").innerHTML=tp.ids.map(id=>{ const c=client(id); if(!c) return ""; const s2=tr&&tr.stops[id];
-      return `<div class="hd"><i style="background:${c.zone?zoneColour(c.zone):"var(--line)"}"></i><b>${s2?fmtTime(s2.start/60):"–"}</b><span>${esc(c.name)}${tp.pins[id]?" 📌":""}</span><span class="small muted">${esc((c.address||"").split(",")[1]||"")}</span></div>`; }).join("")
+    $("#homeDays").innerHTML=tp.ids.map((id,k)=>{ const c=client(id); if(!c) return ""; const s2=tr&&tr.stops[id];
+      return `<div class="hd numd"><span class="pin" style="background:${c.zone?zoneColour(c.zone):"var(--accent)"}">${k+1}</span><b>${s2?fmtTime(s2.start/60):"–"}</b><span>${esc(c.name)}${tp.pins[id]?" 📌":""}</span><span class="small muted">${esc((c.address||"").split(",")[1]||"")}</span></div>`; }).join("")
       +(tr?"":`<p class="muted small" style="margin:0">Visit order not worked out yet.</p>`);
   } else if(tdAny && tdAny.stops.length){
     $("#homeWeekBtns").innerHTML=`<button class="btn primary" data-today="${tdAny.key}">Open today</button>`;
@@ -1648,6 +1653,7 @@ function renderHome(){
     $("#homeStats").innerHTML="";
     $("#homeDays").innerHTML=`<p class="muted small" style="margin:0">No visits booked today.</p>`;
   }
+  drawHomeMap(tp && tp.ids.length ? tp : null);
   renderHomeWeek();
 }
 let homeWk=0;   // weeks away from this week, for Home's week viewer
@@ -1927,6 +1933,18 @@ function drawMap(){
   try{
     if(!map){
       el.innerHTML=""; el.classList.add("live");
+      map=makeLiveMap(el);
+      mapLoaded=new Promise(res=>map.once("load",res));
+      if(window.ResizeObserver) new ResizeObserver(()=>map && map.resize()).observe(el);
+    }
+    mapLoaded.then(()=>updateLiveMap(sch));
+    setTimeout(()=>map.resize(),30);
+  }catch(e){ console.warn(e); map=null; $("#map").classList.remove("live"); drawSvgMap(); }
+}
+function makeLiveMap(el){
+  let map;
+  {
+    {
       if(!drawMap.proto){ drawMap.proto=true; maplibregl.addProtocol("b64", async(params)=>({data: await fetchB64(dataUrl(params.url.replace("b64://","")))})); }
       const v=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
       const roadCol=["match",["get","c"],"m",v("--map-motorway"),"t",v("--map-motorway"),"p",v("--map-major"),"s",v("--map-major"),v("--map-road")];
@@ -1957,12 +1975,35 @@ function drawMap(){
       map.addControl(new maplibregl.NavigationControl({showCompass:false}),"top-right");
       map.addControl(new maplibregl.AttributionControl({compact:true,customAttribution:"© OpenStreetMap contributors · Overture Maps"}));
       map.on("error", e=>console.warn("map", e && e.error && e.error.message));
-      mapLoaded=new Promise(res=>map.once("load",res));
-      if(window.ResizeObserver) new ResizeObserver(()=>map && map.resize()).observe(el);
     }
-    mapLoaded.then(()=>updateLiveMap(sch));
-    setTimeout(()=>map.resize(),30);
-  }catch(e){ console.warn(e); map=null; $("#map").classList.remove("live"); drawSvgMap(); }
+  }
+  return map;
+}
+// Home: today's visits on the map, numbered in visit order with the road route
+let homeMap=null, homeMapLoaded=null, homeMarkers=[];
+function drawHomeMap(p){
+  const el=$("#homeMap"), r=p&&p.result&&!p.stale?p.result:null;
+  const pts=p?p.ids.map(client).filter(c=>c&&c.lat!=null):[];
+  el.hidden=!pts.length || !window.maplibregl; if(el.hidden) return;
+  try{
+    if(!homeMap){ homeMap=makeLiveMap(el); homeMapLoaded=new Promise(res=>homeMap.once("load",res));
+      if(window.ResizeObserver) new ResizeObserver(()=>homeMap && homeMap.resize()).observe(el); }
+    homeMapLoaded.then(()=>{
+      homeMarkers.forEach(m=>m.remove()); homeMarkers=[];
+      const st=S.settings, base=r&&r.baseLL&&r.baseLL[1]!=null?r.baseLL:(st.baseLat!=null?[st.baseLng,st.baseLat]:null);
+      const b=new maplibregl.LngLatBounds([pts[0].lng,pts[0].lat],[pts[0].lng,pts[0].lat]);
+      pts.forEach((c,k)=>{ b.extend([c.lng,c.lat]); const s=r&&r.stops[c.id];
+        const pin=document.createElement("button"); pin.className="pin"; pin.style.background=c.zone?zoneColour(c.zone):"var(--accent)"; pin.textContent=k+1;
+        pin.setAttribute("aria-label",`Visit ${k+1}: ${c.name}`);
+        const pop=new maplibregl.Popup({offset:14,closeButton:false}).setHTML(`<b>${s?fmtTime(s.start/60)+" · ":""}${esc(c.name)}</b><br><span class="muted">${esc(c.address)}</span>`);
+        homeMarkers.push(new maplibregl.Marker({element:pin}).setLngLat([c.lng,c.lat]).setPopup(pop).addTo(homeMap)); });
+      if(base){ b.extend(base); const h=document.createElement("div"); h.className="pin home"; h.textContent="S"; h.title="Start: "+st.baseAddr; homeMarkers.push(new maplibregl.Marker({element:h}).setLngLat(base).addTo(homeMap)); }
+      const line=r&&r.line&&r.line.length?r.line:null;
+      homeMap.getSource("routes").setData({type:"FeatureCollection",features:line?[{type:"Feature",properties:{col:getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()||"#385e93"},geometry:{type:"LineString",coordinates:line}}]:[]});
+      homeMap.setMinZoom(8); const at=el.querySelector(".maplibregl-ctrl-attrib"); if(at) at.classList.remove("maplibregl-compact-show");
+      homeMap.resize(); requestAnimationFrame(()=>{ homeMap.resize(); homeMap.fitBounds(b,{padding:{top:36,bottom:36,left:36,right:52},maxZoom:14,duration:0}); });
+    });
+  }catch(e){ console.warn(e); el.hidden=true; }
 }
 function updateLiveMap(sch){
   markers.forEach(m=>m.remove()); markers=[];
@@ -2322,8 +2363,11 @@ async function computeDay(mode){   // mode "optimise" finds the best order; "kee
       stops[use[s.i].id]={start:s.start, end:s.end, driveSec:s.driveSec, driveM:m, wait:s.wait, late:s.late, busy:busy(from)}; prev=n; dep=s.end; });
     let ret=null;
     if(r.stops.length && st.returnHome){ const m=mx.distAt(prev,0,dep); dist+=m; ret={sec:r.retSec, m, busy:busy(dep)}; }
+    // Road line for the map: home -> each visit (-> home)
+    let line=[]; { let pv=0, d0=r.leave; r.stops.forEach((s,k)=>{ const seg=mx.line(pv, s.i+1, pv===0?r.leave:d0); line=line.concat(k?seg.slice(1):seg); pv=s.i+1; d0=s.end; });
+      if(r.stops.length && st.returnHome){ line=line.concat(mx.line(pv,0,d0).slice(1)); } }
     p.ids=r.order.map(i=>use[i].id).concat(notFound);
-    p.result={at:new Date().toISOString(), stops, leave:r.leave, back:r.back, ret, drive:r.drive, dist, late:r.late, over:r.over,
+    p.result={line, baseLL:[st.baseLng,st.baseLat], at:new Date().toISOString(), stops, leave:r.leave, back:r.back, ret, drive:r.drive, dist, late:r.late, over:r.over,
               estimated:mx.estimated, approx:use.filter(c=>c.geo==="approx").length, notFound, base:st.baseAddr};
     p.manual = mode==="keep"; p.stale=false;
     save();
