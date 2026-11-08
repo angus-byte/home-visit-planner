@@ -242,7 +242,11 @@ details.card summary{cursor:pointer;font-weight:600}
 /* Month calendar */
 .calnav{gap:8px}
 .calnav>.btn{min-width:42px;padding:8px 12px;font-size:1.2rem;line-height:1}
-.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;position:relative}
+.cal .hl{position:absolute;left:0;top:0;pointer-events:none;border:2.5px solid var(--accent);border-radius:14px;background:rgba(56,94,147,.07);box-shadow:0 6px 18px rgba(56,94,147,.22);opacity:0;z-index:2;transition:transform .16s cubic-bezier(.3,.7,.4,1),width .16s,height .16s,opacity .15s}
+.cal .hl.on{opacity:1}
+.cal .cell:hover .n,.cal .cell:focus-visible .n{background:var(--accent-soft);color:var(--accent)}
+.cal .cell.today:hover .n{background:var(--accent);color:#fff}
 .cal .dow{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);text-align:center;padding:4px 0}
 .cal .cell{--zc:transparent;font:inherit;text-align:left;min-height:112px;padding:8px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--zc) 9%,#fff);cursor:pointer;display:flex;flex-direction:column;gap:4px;color:var(--ink);transition:transform .08s,box-shadow .15s;box-shadow:var(--shadow-1);min-width:0;overflow:hidden}
 .cal .cell:hover{box-shadow:0 4px 14px rgba(15,31,38,.12)}
@@ -2416,8 +2420,17 @@ function renderCal(){
       ${timed?`<span class="ok">✓ ${fmtTime(p.result.leave/60)}–${fmtTime(p.result.back/60)}</span>`:""}
     </button>`;
   }
-  $("#cal").innerHTML=html;
+  $("#cal").innerHTML=html+`<div class="hl" aria-hidden="true"></div>`;
 }
+// Highlight that glides to whichever day the mouse (or keyboard focus) is on
+function calHl(cell){ const hl=$("#cal .hl"); if(!hl) return; if(!cell){ hl.classList.remove("on"); return; }
+  const first=!hl.classList.contains("on"); if(first) hl.style.transition="none";
+  hl.style.width=cell.offsetWidth+4+"px"; hl.style.height=cell.offsetHeight+4+"px"; hl.style.transform=`translate(${cell.offsetLeft-2}px,${cell.offsetTop-2}px)`;
+  hl.classList.add("on"); if(first){ hl.offsetWidth; hl.style.transition=""; } }
+$("#cal").addEventListener("pointerover", e=>{ if(e.pointerType==="touch") return; calHl(e.target.closest(".cell")); });
+$("#cal").addEventListener("pointerleave", ()=>calHl(null));
+$("#cal").addEventListener("focusin", e=>calHl(e.target.closest(".cell")));
+$("#cal").addEventListener("focusout", ()=>calHl(null));
 $("#calMonths").addEventListener("click", e=>{ const b=e.target.closest("[data-cm]"); if(!b) return; S.calMonth=b.dataset.cm; save(); renderCal(); });
 $("#calPrev").addEventListener("click", ()=>{ S.calMonth=monthAdd(calMonth(),-1); save(); renderCal(); });
 $("#calNext").addEventListener("click", ()=>{ S.calMonth=monthAdd(calMonth(),1); save(); renderCal(); });
