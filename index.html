@@ -2455,7 +2455,7 @@ function renderDayDlg(){
     .sort((a,b)=>(p.ids.includes(b.id)-p.ids.includes(a.id)) || a.name.localeCompare(b.name));
   $("#ddClients").innerHTML=list.length? list.map(c=>{ const on=p.ids.includes(c.id), pin=p.pins[c.id];
     return `<li class="${on?"on":""}"><input type="checkbox" data-ddon="${c.id}" ${on?"checked":""} aria-label="See ${esc(c.name)} on this day">
-      <span style="min-width:0"><b>${esc(c.name)}</b>${all&&c.zone?" "+zoneChip(c.zone):""}<span class="sub">${esc(c.address)}</span></span>
+      <span style="min-width:0"><b>${esc(c.name)}</b>${c.zone?" "+zoneChip(c.zone):""}<span class="sub">${esc(c.address)}</span></span>
       <span class="pinat">${pin?"📌 "+fmtTime(toMin(pin)):""}</span>
       <button type="button" class="grip" data-drag="${c.id}" aria-label="Drag ${esc(c.name)} to a time">${GRIP}</button></li>`; }).join("")
     : `<li class="muted" style="display:block">${p.zone&&!$("#ddAll").checked?`No clients in ${esc(p.zone)} yet. Tick "All zones", or set zones in the client list.`:"No clients match."}</li>`;
