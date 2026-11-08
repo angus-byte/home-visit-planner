@@ -122,6 +122,13 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 @media (max-width:860px){ .homegrid{grid-template-columns:1fr} }
 @media (max-width:520px){ .homedays .hd{grid-template-columns:12px 1fr auto} .homedays .hd .muted{grid-column:2/4;grid-row:2} }
 .homedays{display:grid;gap:6px}
+.needs{display:grid;gap:6px;max-height:420px;overflow-y:auto}
+.needs .nb{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;padding:8px 10px;border-radius:10px;background:var(--soft);font-size:.9rem}
+.needs .nb .who{min-width:0}
+.needs .nb .when{font-size:.8rem;color:var(--muted)}
+.needs .nb .when.over{color:var(--bad);font-weight:700}
+.needs .nb .when.never{color:var(--warn);font-weight:700}
+.needs .nb .btn{min-height:34px;padding:4px 14px;font-size:.8rem}
 .homedays .hd{display:grid;grid-template-columns:12px 90px 1fr auto;gap:10px;align-items:center;font-size:.9rem;padding:8px 10px;border-radius:10px;background:var(--soft)}
 .homedays .hd i{width:10px;height:10px;border-radius:50%}
 .togglebtn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
@@ -373,6 +380,7 @@ nav.steps button{border-radius:999px}
       </div>
       <label class="row small" style="flex-wrap:nowrap;align-items:flex-start"><input type="checkbox" id="returnHome"><span>Drive back to the start address at the end of each day</span></label>
       <label class="row small" style="flex-wrap:nowrap;align-items:flex-start"><input type="checkbox" id="traffic"><span>Allow for peak-hour traffic (about 7–9:30am, school pick-up and 3:30–6:30pm)</span></label>
+      <label class="f">Book ahead (weeks)<input type="number" id="hAhead" min="1" max="26" step="1"></label>
       <p class="muted small" style="margin:0">Changing usual days or hours updates every week that isn't built yet. You can still adjust a single week in Planner.</p>
     </div>
     <div style="display:grid;gap:16px;align-content:start">
@@ -392,6 +400,14 @@ nav.steps button{border-radius:999px}
         </div>
         <div id="homeCal" class="cal calweek"></div>
         <p class="muted small" style="margin:0">Click a day to plan it.</p>
+      </div>
+      <div class="card" id="needsCard" style="display:grid;gap:12px;align-content:start">
+        <div class="row spread">
+          <h2 style="font-size:1.2rem;margin:0">Needs booking <span class="muted" id="needsCount" style="font-weight:400;font-size:.95rem"></span></h2>
+          <select id="needsZone" aria-label="Filter by zone" style="width:auto;min-height:36px;padding:4px 30px 4px 12px;font-size:.85rem"></select>
+        </div>
+        <p class="muted small" style="margin:0" id="needsHint"></p>
+        <div id="needsList" class="needs"></div>
       </div>
     </div>
   </div>
@@ -1658,7 +1674,7 @@ function renderHome(){
   $("#hDayPick").innerHTML=DAY_KEYS.map(k=>`<label><input type="checkbox" data-hday="${k}" ${u.days[k]?"checked":""}>${k}</label>`).join("");
   const h=new Date().getHours();
   $("#homeHello").textContent=h<12?"Good morning":h<17?"Good afternoon":"Good evening";
-  $("#homeSub").textContent=`${S.clients.length} client${S.clients.length===1?"":"s"} in your list · planning ${W.length} weeks from ${weekLabel(W[0])}`;
+  { const nb=needsBooking().length; $("#homeSub").textContent=`${S.clients.length} client${S.clients.length===1?"":"s"} in your list${nb?` · ${nb} need${nb===1?"s":""} booking`:""}`; }
   const notes=[];
   if(!st.baseAddr) notes.push(`<div class="banner warn">Add your start and finish address below so drive times can be worked out.</div>`);
   if(!S.clients.length) notes.push(`<div class="banner info"><span style="flex:1">No clients yet. Import your list to get started.</span><button class="btn" data-go="clients">Go to clients</button></div>`);
@@ -1686,8 +1702,54 @@ function renderHome(){
     $("#homeDays").innerHTML=`<p class="muted small" style="margin:0">No visits booked today.</p>`;
   }
   drawHomeMap(tp && tp.ids.length ? tp : null);
+  $("#hAhead").value=Math.max(1,+S.settings.ahead||6);
+  renderNeeds();
   renderHomeWeek();
 }
+/* Needs booking: a client is listed when they have no visit booked from today on, and either have never been booked
+   or their next visit (last visit + their frequency) falls within the booking window (S.settings.ahead weeks, default 6).
+   Most overdue first. Booking any upcoming day takes them off the list. "Book" opens the best day for them in the day pop-up with them ticked:
+   the first day from their due date that's already set to their zone, otherwise the first usual working day. */
+function bookings(id){ return Object.keys(S.dayPlans||{}).filter(d=>S.dayPlans[d].ids.includes(id)).sort(); }
+function needsBooking(){
+  const today=todayIso(), ahead=Math.max(1,+S.settings.ahead||6), horizon=addDays(today, ahead*7), out=[];
+  S.clients.forEach(c=>{ const n=+c.every||0, bk=bookings(c.id);
+    if(bk.some(d=>d>=today)) return;                 // next visit already booked
+    const last=bk[bk.length-1];
+    if(!last){ out.push({c, last:null, due:today, never:true}); return; }
+    if(!n) return;
+    const due=addDays(last, n*7); if(due<=horizon) out.push({c, last, due, over:due<today}); });
+  const rank=x=>x.over?0:x.never?1:2;   // overdue, then never booked, then due soon
+  return out.sort((a,b)=>rank(a)-rank(b) || a.due.localeCompare(b.due) || a.c.name.localeCompare(b.c.name));
+}
+function bookDayFor(c, due){
+  const today=todayIso(), u=usual(); let from=due<today?today:due;
+  const days=[...Array(70)].map((_,i)=>addDays(from,i));
+  const zoneDay=c.zone && days.find(d=>S.dayPlans[d] && S.dayPlans[d].zone===c.zone);
+  if(zoneDay) return zoneDay;
+  return days.find(d=>u.days[DAY_KEYS[(new Date(d+"T00:00:00").getDay()+6)%7]]) || from;
+}
+function renderNeeds(){
+  const all=needsBooking(), zs=zonesOf(), zf=S.needsZone||"";
+  $("#needsZone").innerHTML=`<option value="">All zones</option>`+zs.map(z=>`<option${z===zf?" selected":""}>${esc(z)}</option>`).join("");
+  $("#needsZone").hidden=!zs.length;
+  const list=all.filter(x=>!zf || x.c.zone===zf), ahead=Math.max(1,+S.settings.ahead||6);
+  $("#needsCount").textContent=list.length?`· ${list.length}`:"";
+  $("#needsHint").textContent=`Clients with no upcoming visit who are due in the next ${ahead} weeks (from how often they're seen and their last visit), or have never been booked.`;
+  const fmt=d=>dayLabel(d,{weekday:"short",day:"numeric",month:"short"});
+  $("#needsList").innerHTML=list.length? list.slice(0,60).map(x=>{ const c=x.c;
+    const when = x.never ? `<span class="when never">Not booked yet</span>`
+      : `<span class="when${x.over?" over":""}">${x.over?"Overdue since":"Due"} ${esc(fmt(x.due))} · last ${esc(fmt(x.last))}</span>`;
+    return `<div class="nb"><div class="who"><b>${esc(c.name)}</b>${c.zone?" "+zoneChip(c.zone):""} <span class="small muted">${+c.every?esc(+c.every===1?"Weekly":"Every "+c.every+" weeks"):"As needed"}</span><br>${when}</div>
+      <button type="button" class="btn" data-book="${c.id}" data-due="${x.due}">Book</button></div>`; }).join("")
+    : `<p class="muted small" style="margin:0">${all.length?"No one in this zone needs booking.":"Everyone is booked in. Nice."}</p>`;
+}
+$("#needsZone").addEventListener("change", e=>{ S.needsZone=e.target.value; save(); renderNeeds(); });
+$("#needsList").addEventListener("click", e=>{ const b=e.target.closest("[data-book]"); if(!b) return;
+  const c=S.clients.find(x=>x.id===b.dataset.book); if(!c) return;
+  const d=bookDayFor(c, b.dataset.due), p=dayPlan(d);
+  if(!p.zone && c.zone) p.zone=c.zone;
+  addToDay(d, c.id); save(); openDayDlg(d); });
 let homeWk=0;   // weeks away from this week, for Home's week viewer
 function renderHomeWeek(){
   const today=todayIso(), d=new Date(today+"T00:00:00"); d.setDate(d.getDate()-((d.getDay()+6)%7)+homeWk*7);
@@ -1700,7 +1762,7 @@ function renderHomeWeek(){
 function readHome(e){
   const st=S.settings, u=usual();
   st.baseAddr=$("#baseAddr").value.trim();
-  st.buffer=Math.max(0,+$("#buffer").value||0); st.returnHome=$("#returnHome").checked; st.traffic=$("#traffic").checked; st.mode=$("#mode").value;
+  st.buffer=Math.max(0,+$("#buffer").value||0); st.ahead=Math.max(1,Math.min(26,+$("#hAhead").value||6)); st.returnHome=$("#returnHome").checked; st.traffic=$("#traffic").checked; st.mode=$("#mode").value;
   const t=e&&e.target;
   if(t && (t.id==="hStart"||t.id==="hEnd"||t.dataset.hday)){
     u.start=$("#hStart").value||"08:30"; u.end=$("#hEnd").value||"17:00";
