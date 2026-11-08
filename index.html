@@ -373,7 +373,7 @@ nav.steps button{border-radius:999px}
         <div class="daypick" id="hDayPick"></div>
       </div>
       <div class="grid2">
-        <label class="f">Gap between visits (min)<input type="number" id="buffer" min="0" max="60" step="5"></label>
+        <label class="f">Gap between visits (min)<input type="number" id="buffer" min="0" max="60" step="5"><span class="small muted" style="font-weight:400">Pack down time, added on top of the drive</span></label>
         <label class="f">Day style
           <select id="mode"><option value="balance">Spread visits evenly across days</option><option value="pack">Fewest days, least driving</option></select>
         </label>
@@ -432,7 +432,7 @@ nav.steps button{border-radius:999px}
       <label class="f">Finish by<input type="time" id="dEnd" step="300"></label>
       <label class="f">Timing<select id="dMode"></select></label>
       <label class="f">Appointment (min)<input type="number" id="dAppt" min="5" max="240" step="5"></label>
-      <label class="f">Pack down + travel (min)<input type="number" id="dPack" min="0" max="120" step="5"></label>
+      <label class="f">Gap between visits (min)<input type="number" id="dPack" min="0" max="120" step="5"></label>
       <label class="f">Round times to<select id="dRound"><option value="0">Exact</option><option value="5">5 min</option><option value="15">15 min</option></select></label>
     </div>
     <div class="row small" style="gap:6px 14px">
@@ -901,7 +901,7 @@ if (typeof module !== "undefined") { module.exports = {Solver}; }
 "use strict";
 /* ============================ DAY SOLVER (pure, testable) ============================
    Orders one day's visits from a start address. Node 0 = start address, node i+1 = visit i.
-   opts: {n, durAt(i,j,clockSec), visitSec, gapSec (pack down + travel allowance; a longer drive pushes the next visit later),
+   opts: {n, durAt(i,j,clockSec), visitSec, gapSec (gap between visits, added on top of the drive),
           roundSec (start times rounded up to this), startSec (earliest first visit), endSec (finish by),
           pins: [clockSec|null] per visit, returnHome}
    Pinned visits start exactly at their time when reachable; the rest are fitted around them. */
@@ -942,7 +942,7 @@ const DaySolver = (() => {
         d=o.durAt(0,c+1,target-o.durAt(0,c+1,target)); earliest=target; leave=target-d;
       } else {
         d=o.durAt(prev,c+1,prevEnd);
-        earliest=prevEnd+Math.max(o.gapSec,d);
+        earliest=prevEnd+o.gapSec+d;
         if(o.roundSec) earliest=Math.ceil((earliest-1)/o.roundSec)*o.roundSec;
       }
       let start=earliest, lateBy=0, waitBy=0;
@@ -1762,7 +1762,9 @@ function renderHomeWeek(){
 function readHome(e){
   const st=S.settings, u=usual();
   st.baseAddr=$("#baseAddr").value.trim();
-  st.buffer=Math.max(0,+$("#buffer").value||0); st.ahead=Math.max(1,Math.min(26,+$("#hAhead").value||6)); st.returnHome=$("#returnHome").checked; st.traffic=$("#traffic").checked; st.mode=$("#mode").value;
+  const gap=Math.max(0,+$("#buffer").value||0);
+  if(gap!==+st.buffer) Object.values(S.dayPlans||{}).forEach(p=>{ if(p.result) p.stale=true; });
+  st.buffer=gap; st.ahead=Math.max(1,Math.min(26,+$("#hAhead").value||6)); st.returnHome=$("#returnHome").checked; st.traffic=$("#traffic").checked; st.mode=$("#mode").value;
   const t=e&&e.target;
   if(t && (t.id==="hStart"||t.id==="hEnd"||t.dataset.hday)){
     u.start=$("#hStart").value||"08:30"; u.end=$("#hEnd").value||"17:00";
@@ -2279,6 +2281,7 @@ $("#btnMonthCsv").addEventListener("click", ()=>{
    and order the visits from the start address. Visits can be fixed to a time; the rest are fitted around them.
    Saved per date in S.dayPlans[date] = {ids (visit order), pins {id:"HH:MM"}, booked {id:"HH:MM"}, zone, result, manual, stale}. */
 const DAY_DEF={first:"09:00", end:"16:00", apptMin:30, packMin:15, roundMin:5};
+function gapMin(){ return Math.max(0,+S.settings.buffer||0); }
 function dayCfg(){ S.settings.dayCfg=Object.assign({...DAY_DEF}, S.settings.dayCfg||{}); return S.settings.dayCfg; }
 if(!S.dayPlans || typeof S.dayPlans!=="object") S.dayPlans={};
 function defaultDayDate(){ const d=new Date(); d.setDate(d.getDate()+42); while(d.getDay()===0||d.getDay()===6) d.setDate(d.getDate()+1); return isoLocal(d); }
@@ -2447,7 +2450,7 @@ async function computeDay(mode){   // mode "optimise" finds the best order; "kee
       dayMx={key,mx};
     }
     prog("Finding the best order…",0.93); await sleep(20);
-    const o={n:use.length, durAt:mx.durAt, visitSec:cfg.apptMin*60, gapSec:cfg.packMin*60, roundSec:(+cfg.roundMin||0)*60,
+    const o={n:use.length, durAt:mx.durAt, visitSec:cfg.apptMin*60, gapSec:gapMin()*60, roundSec:(+cfg.roundMin||0)*60,
              startSec:toMin(dayTimes(p).first)*60, endSec:toMin(dayTimes(p).end)*60, pins:use.map(c=>p.pins[c.id]?toMin(p.pins[c.id])*60:null), returnHome:st.returnHome, mode:dayMode(p)};
     const cur=p.ids.map(id=>use.findIndex(c=>c.id===id)).filter(i=>i>=0);
     const r = mode==="keep" ? DaySolver.evaluate(cur,o) : DaySolver.solve(o);
@@ -2477,7 +2480,7 @@ const GRIP=`<svg width="14" height="18" viewBox="0 0 14 18" aria-hidden="true"><
 const PIN=`<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 1.5h6l-1 4.5 2.5 2.5v1.5h-4V15L8 15.5 7.5 15v-5h-4V8.5L6 6z" fill="currentColor"/></svg>`;
 function renderDay(){
   const st=S.settings, cfg=dayCfg(), date=S.dayDate, p=dayPlan(date), r=p.result;
-  $("#dDate").value=date; $("#dMode").innerHTML=dayModeOptions(dayMode(p)); $("#dStart").value=dayTimes(p).first; $("#dEnd").value=dayTimes(p).end; $("#dAppt").value=cfg.apptMin; $("#dPack").value=cfg.packMin; $("#dRound").value=String(cfg.roundMin);
+  $("#dDate").value=date; $("#dMode").innerHTML=dayModeOptions(dayMode(p)); $("#dStart").value=dayTimes(p).first; $("#dEnd").value=dayTimes(p).end; $("#dAppt").value=cfg.apptMin; $("#dPack").value=gapMin(); $("#dRound").value=String(cfg.roundMin);
   $("#dReturn").checked=st.returnHome; $("#dBase").textContent=st.baseAddr||"no address yet";
   const zs=zonesOf(); if(p.zone && !zs.includes(p.zone)) zs.push(p.zone);
   $("#dZone").innerHTML=`<option value="">${zs.length?"Any zone":"No zones yet (set them up in Clients, Zones)"}</option>`+zs.map(z=>`<option${z===p.zone?" selected":""}>${esc(z)}</option>`).join("");
@@ -2550,7 +2553,7 @@ $("#v-day").addEventListener("change", e=>{
   if(t.id==="dReturn"){ S.settings.returnHome=t.checked; save(); retimeDay(); return; }
   if(["dStart","dEnd","dAppt","dPack","dRound"].includes(t.id)){
     setDayTimes(p, $("#dStart").value, $("#dEnd").value);
-    cfg.apptMin=Math.max(5,+$("#dAppt").value||DAY_DEF.apptMin); cfg.packMin=Math.max(0,+$("#dPack").value||0); cfg.roundMin=+$("#dRound").value||0;
+    cfg.apptMin=Math.max(5,+$("#dAppt").value||DAY_DEF.apptMin); S.settings.buffer=Math.max(0,+$("#dPack").value||0); cfg.roundMin=+$("#dRound").value||0;
     save(); retimeDay();
   }
 });
@@ -2705,7 +2708,7 @@ $("#calNext").addEventListener("click", ()=>{ S.calMonth=monthAdd(calMonth(),1);
 let ddDate=null, ddBusy=false;
 function openDayDlg(date){ ddDate=date; $("#ddSearch").value=""; $("#ddAll").checked=false; $("#ddMsg").hidden=true; renderDayDlg(); $("#dlgDay").showModal(); }
 function ddSlotTimes(p){
-  const cfg=dayCfg(), tm=dayTimes(p), step=Math.max(5,(+cfg.apptMin||30)+(+cfg.packMin||0)), out=new Set();
+  const cfg=dayCfg(), tm=dayTimes(p), step=Math.max(5,(+cfg.apptMin||30)+gapMin()), out=new Set();
   for(let m=toMin(tm.first); m+(+cfg.apptMin||30)<=toMin(tm.end); m+=step) out.add(hhmm(m*60));
   Object.values(p.pins).forEach(t=>out.add(t));
   return [...out].sort();
@@ -2753,11 +2756,11 @@ function renderDayDlg(){
     const ordered=p.ids.filter(id=>r.stops[id]).sort((a,b2)=>r.stops[a].start-r.stops[b2].start);
     let from=r.leave;
     ordered.forEach(id=>{ const st=r.stops[id];
-      travelRows.push(travelRow(from, st.driveSec, st.driveM, st.busy, st.wait)); from=st.end; });
+      travelRows.push(travelRow(from, st.driveSec, st.driveM, st.busy, st.wait, false, from===r.leave?0:gapMin())); from=st.end; });
     if(r.ret) travelRows.push(travelRow(from, r.ret.sec, r.ret.m, r.ret.busy, 0, true));
   }
-  function travelRow(dep, sec, m, busy, wait, home){
-    return `<li class="travel" data-k="${hhmm(dep)}~"><span class="t"></span><span class="small">🚗 ${fmtDur(sec)} drive${m?` · ${(m/1000).toFixed(m<10000?1:0)} km`:""}${busy?' <span class="peak">peak traffic</span>':""}${wait>=300?` · ${fmtDur(wait)} spare`:""}${home?" home":""}</span></li>`; }
+  function travelRow(dep, sec, m, busy, wait, home, gap){
+    return `<li class="travel" data-k="${hhmm(dep)}~"><span class="t"></span><span class="small">${gap?`⏸ ${gap} min gap + `:""}🚗 ${fmtDur(sec)} drive${m?` · ${(m/1000).toFixed(m<10000?1:0)} km`:""}${busy?' <span class="peak">peak traffic</span>':""}${wait>=300?` · ${fmtDur(wait)} spare`:""}${home?" home":""}</span></li>`; }
   $("#ddSlots").innerHTML=[leaveRow,backRow,...travelRows,...slotRows].filter(Boolean).map(h=>[h.match(/data-k="([^"]*)"/)[1],h]).sort((a,b2)=>a[0]<b2[0]?-1:a[0]>b2[0]?1:0).map(x=>x[1]).join("");
   const free=p.ids.filter(id=>!p.pins[id]).length;
   $("#ddFree").textContent=r&&p.ids.length?"Best order filled in":p.ids.length?`${free} to fit in around ${Object.keys(byTime).length?"them":"the day"}`:"";
