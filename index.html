@@ -124,6 +124,8 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .homedays{display:grid;gap:6px}
 .homedays .hd{display:grid;grid-template-columns:12px 90px 1fr auto;gap:10px;align-items:center;font-size:.9rem;padding:8px 10px;border-radius:10px;background:var(--soft)}
 .homedays .hd i{width:10px;height:10px;border-radius:50%}
+.callbtn{display:inline-grid;place-items:center;width:30px;height:30px;margin-left:6px;border-radius:50%;background:var(--good-soft);color:var(--good);vertical-align:middle;text-decoration:none}
+.callbtn:hover{background:var(--good);color:#fff}
 .homedays .hd.numd{grid-template-columns:22px 70px 1fr auto}
 .homeweeks{display:grid;gap:6px}
 .homeweeks button{font:inherit;text-align:left;display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px 14px;cursor:pointer;transition:background .15s,transform .08s}
@@ -332,7 +334,6 @@ nav.steps button{border-radius:999px}
     </div>
     <nav class="steps" aria-label="Steps">
       <button data-go="home"><span class="n"><svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M1 6 6 1.5 11 6M2.5 5v5.5h7V5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>Home</button>
-      <button data-go="day"><span class="n"><svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><rect x="1.5" y="2.5" width="9" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M1.5 5h9M4 1v2.5M8 1v2.5" stroke="currentColor" stroke-width="1.5"/></svg></span>Plan a day</button>
       <button data-go="clients"><span class="n">1</span>Clients</button>
       <button data-go="week"><span class="n">2</span>Planner</button>
       <button data-go="schedule"><span class="n">3</span>Schedule</button>
@@ -398,6 +399,7 @@ nav.steps button{border-radius:999px}
 <!-- PLAN A DAY -->
 <section class="view" id="v-day" hidden>
   <div>
+    <button class="btn link" data-go="week" style="padding:0;min-height:0;margin-bottom:6px">‹ Back to Planner</button>
     <h1>Plan a day</h1>
     <p class="muted" style="margin:4px 0 0">Pick the day, add who's booked, and get the most efficient visit order. Fix anyone who needs a set time and everyone else is fitted around them.</p>
   </div>
@@ -1470,7 +1472,7 @@ function importRows(rows, opt={}){
   renderClients();
   const added=addedIds.size, updated=updatedIds.size;
   showImport(`Imported <b>${added}</b> new client${added===1?"":"s"}${updated?`, updated ${updated}`:""}${skipped?`, skipped ${skipped} row${skipped===1?"":"s"} with no name or address`:""}.${hadExamples?" Example clients removed.":""}`
-    +(dates.size?` Visits were added to ${dates.size} day${dates.size===1?"":"s"} in <a href="#day" data-go="day">Plan a day</a>.`:` Pick who you're seeing in <a href="#week" data-go="week">Planner</a>, or one day at a time in <a href="#day" data-go="day">Plan a day</a>.`));
+    +(dates.size?` Visits were added to ${dates.size} day${dates.size===1?"":"s"} in the <a href="#week" data-go="week">Planner</a>.`:` Pick who you're seeing in the <a href="#week" data-go="week">Planner</a>.`));
 }
 /* ---------- Cliniko import ----------
    Cliniko's API can't be called from a browser (no CORS, and it needs a User-Agent
@@ -1667,7 +1669,7 @@ function renderHome(){
     $("#homeWeekBtns").innerHTML=`<button class="btn${tr?"":" primary"}" data-hometoday="1">${tr?"Open day":"Plan today"}</button>`;
     $("#homeStats").innerHTML=stat("Visits",tp.ids.length)+(tr?stat("Leave",fmtTime(tr.leave/60))+stat("Home by",fmtTime(tr.back/60))+stat("Driving",fmtDur(tr.drive)):"");
     $("#homeDays").innerHTML=tp.ids.map((id,k)=>{ const c=client(id); if(!c) return ""; const s2=tr&&tr.stops[id];
-      return `<div class="hd numd"><span class="pin" style="background:${c.zone?zoneColour(c.zone):"var(--accent)"}">${k+1}</span><b>${s2?fmtTime(s2.start/60):"–"}</b><span>${esc(c.name)}${tp.pins[id]?" 📌":""}</span><span class="small muted">${esc((c.address||"").split(",")[1]||"")}</span></div>`; }).join("")
+      return `<div class="hd numd"><span class="pin" style="background:${c.zone?zoneColour(c.zone):"var(--accent)"}">${k+1}</span><b>${s2?fmtTime(s2.start/60):"–"}</b><span>${esc(c.name)}${tp.pins[id]?" 📌":""}${c.phone?` <a class="callbtn" href="tel:${esc(String(c.phone).replace(/[^0-9+]/g,""))}" aria-label="Call ${esc(c.name)}" title="Call ${esc(c.phone)}">${PHONE_ICON}</a>`:""}</span><span class="small muted">${esc((c.address||"").split(",")[1]||"")}</span></div>`; }).join("")
       +(tr?"":`<p class="muted small" style="margin:0">Visit order not worked out yet.</p>`);
   } else if(tdAny && tdAny.stops.length){
     $("#homeWeekBtns").innerHTML=`<button class="btn primary" data-today="${tdAny.key}">Open today</button>`;
@@ -2403,6 +2405,7 @@ async function computeDay(mode){   // mode "optimise" finds the best order; "kee
 // Re-time after a settings or order change, keeping a hand-set order as it is.
 function retimeDay(){ const p=dayPlan(); if(p.result && !p.stale) computeDay(p.manual?"keep":"optimise"); else renderDay(); }
 
+const PHONE_ICON=`<svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6.6 10.8a15.2 15.2 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></svg>`;
 const GRIP=`<svg width="14" height="18" viewBox="0 0 14 18" aria-hidden="true"><g fill="currentColor"><circle cx="4" cy="3" r="1.6"/><circle cx="10" cy="3" r="1.6"/><circle cx="4" cy="9" r="1.6"/><circle cx="10" cy="9" r="1.6"/><circle cx="4" cy="15" r="1.6"/><circle cx="10" cy="15" r="1.6"/></g></svg>`;
 const PIN=`<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 1.5h6l-1 4.5 2.5 2.5v1.5h-4V15L8 15.5 7.5 15v-5h-4V8.5L6 6z" fill="currentColor"/></svg>`;
 function renderDay(){
