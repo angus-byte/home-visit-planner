@@ -450,6 +450,7 @@ nav.steps button{border-radius:999px}
     </div>
     <div class="row noprint">
       <button class="btn" id="btnZones">Zones</button>
+      <button class="btn" id="btnAutoZone">Auto-assign zones</button>
       <button class="btn green" id="btnCliniko">Import from Cliniko</button>
       <details class="more" id="moreAdd">
         <summary class="btn">More</summary>
@@ -671,6 +672,20 @@ nav.steps button{border-radius:999px}
       <button type="button" class="btn link danger" id="ddClear">Clear day</button>
       <div class="row"><button type="button" class="btn" id="ddOpen">Open in Plan a day</button><button type="button" class="btn primary" id="ddGo">Find most efficient route</button><button type="submit" class="btn">Done</button></div>
     </div>
+  </form>
+</dialog>
+
+<dialog id="dlgAutoZone">
+  <form method="dialog" id="azForm" style="display:grid;gap:14px;min-width:min(440px,86vw)">
+    <h2 style="font-size:1.25rem">Auto-assign zones</h2>
+    <p class="muted small" style="margin:0">Groups clients by where they live, so each zone is one tight area you can cover in a day.</p>
+    <label class="f">Number of zones<input type="number" id="azK" min="1" max="12" step="1"></label>
+    <div style="display:grid;gap:6px">
+      <label class="row small" style="flex-wrap:nowrap;align-items:flex-start"><input type="radio" name="azMode" value="fill" id="azFill"><span><b>Only clients without a zone.</b> Each goes into the nearest zone you already have.</span></label>
+      <label class="row small" style="flex-wrap:nowrap;align-items:flex-start"><input type="radio" name="azMode" value="all" id="azAll"><span><b>Redo everyone.</b> Regroup all clients. Existing zone names and colours are kept where they fit.</span></label>
+    </div>
+    <div id="azMsg" class="banner info" hidden></div>
+    <div class="row" style="justify-content:flex-end"><button type="submit" class="btn">Cancel</button><button type="button" class="btn primary" id="azGo">Assign zones</button></div>
   </form>
 </dialog>
 
@@ -2139,6 +2154,56 @@ function renameZone(from, to){
   S.clients.forEach(c=>{ if(c.zone===from) c.zone=to; });
   Object.values(S.dayPlans||{}).forEach(p=>{ if(p.zone===from) p.zone=to; });
 }
+/* Auto-assign zones: group clients by location (k-means on lat/lng, seeded from zones already in use). */
+const suburbOf = a => { const p=String(a||"").split(","); return (p.length>1?p[p.length-1]:"").replace(/\b(QLD|NSW|VIC|SA|WA|TAS|NT|ACT)\b/gi,"").replace(/\d{4}/g,"").trim(); };
+function zoneCentres(pts){ const m={}; pts.forEach(c=>{ if(!c.zone) return; const z=m[c.zone] ||= {lat:0,lng:0,n:0}; z.lat+=c.lat; z.lng+=c.lng; z.n++; });
+  return Object.entries(m).map(([name,z])=>({name, lat:z.lat/z.n, lng:z.lng/z.n})); }
+const geoD2 = (a,b) => { const dx=(a.lng-b.lng)*Math.cos((a.lat+b.lat)*Math.PI/360), dy=a.lat-b.lat; return dx*dx+dy*dy; };
+function nearest(p, cs){ let bi=0, bd=Infinity; cs.forEach((c,i)=>{ const d=geoD2(p,c); if(d<bd){ bd=d; bi=i; } }); return bi; }
+function openAutoZone(){
+  const used=zonesOf().filter(z=>S.clients.some(c=>c.zone===z)), unz=S.clients.filter(c=>!c.zone).length;
+  $("#azK").value=used.length>=2?used.length:Math.max(used.length,5);
+  const canFill=used.length && unz; $("#azFill").disabled=!canFill; (canFill?$("#azFill"):$("#azAll")).checked=true;
+  $("#azMsg").hidden=true; $("#azGo").disabled=false; $("#dlgAutoZone").showModal();
+}
+async function autoZone(){
+  const k=Math.max(1,Math.min(12,Math.round(+$("#azK").value||5))), mode=$("#azFill").checked?"fill":"all", msg=$("#azMsg");
+  if(!S.clients.length){ msg.textContent="No clients yet."; msg.hidden=false; return; }
+  $("#azGo").disabled=true; msg.hidden=false; msg.textContent="Finding addresses on the map…";
+  try{
+    await loadGeocoder();
+    for(const c of S.clients){ if(c.lat==null||c.geo==="pending"||c.geo==="fail"){ const g=await locate(c.address); if(g){ c.lat=g.lat; c.lng=g.lng; c.geo=g.geo; } else c.geo="fail"; } }
+    const pts=S.clients.filter(c=>c.lat!=null && c.geo!=="fail"), missed=S.clients.length-pts.length;
+    let changed=0;
+    if(mode==="fill"){
+      const cs=zoneCentres(pts);
+      pts.filter(c=>!c.zone).forEach(c=>{ c.zone=cs[nearest(c,cs)].name; changed++; });
+    } else {
+      // Seeds: centres of zones in use, then the client farthest from every seed so far
+      let cs=zoneCentres(pts).slice(0,k).map(z=>({...z}));
+      if(!cs.length && pts.length) cs.push({lat:pts[0].lat, lng:pts[0].lng});
+      while(cs.length<Math.min(k,pts.length)){ let far=null, fd=-1; pts.forEach(p=>{ const d=Math.min(...cs.map(c=>geoD2(p,c))); if(d>fd){ fd=d; far=p; } }); cs.push({lat:far.lat, lng:far.lng}); }
+      let lab=[];
+      for(let it=0; it<50; it++){
+        const nl=pts.map(p=>nearest(p,cs)); const same=nl.every((v,i)=>v===lab[i]); lab=nl; if(same) break;
+        cs=cs.map((c,i)=>{ const m=pts.filter((_,j)=>lab[j]===i); return m.length?{...c, lat:m.reduce((a,p)=>a+p.lat,0)/m.length, lng:m.reduce((a,p)=>a+p.lng,0)/m.length}:c; });
+      }
+      // Name each group: keep an existing zone name if it seeded the group, otherwise use its most common suburb
+      const zl=zoneList(), taken=new Set();
+      const names=cs.map((c,i)=>{ if(c.name && !taken.has(c.name)){ taken.add(c.name); return c.name; }
+        const cnt={}; pts.forEach((p,j)=>{ if(lab[j]===i){ const s=suburbOf(p.address); if(s) cnt[s]=(cnt[s]||0)+1; } });
+        let base=(Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0]||["Zone "+(i+1)])[0], n=base, x=2; while(taken.has(n)||(zl.some(z=>z.name===n)&&!cs.some(q=>q.name===n))) n=base+" "+x++;
+        taken.add(n); if(!zl.some(z=>z.name===n)) zl.push({name:n, colour:ZONE_COLOURS.find(col=>!zl.some(z=>z.colour===col))||ZONE_COLOURS[zl.length%ZONE_COLOURS.length]}); return n; });
+      pts.forEach((p,j)=>{ if(p.zone!==names[lab[j]]){ p.zone=names[lab[j]]; changed++; } });
+    }
+    afterZones();
+    const sizes=zonesOf().map(z=>[z,S.clients.filter(c=>c.zone===z).length]).filter(x=>x[1]);
+    msg.innerHTML=`<span>${changed} client${changed===1?"":"s"} assigned. ${sizes.map(([z,n])=>`${esc(z)} ${n}`).join(", ")}.${missed?` ${missed} couldn't be found on the map and were left as they were.`:""}</span>`;
+    $("#azForm button[type=submit]").textContent="Done";
+  } finally { $("#azGo").disabled=false; }
+}
+$("#btnAutoZone").addEventListener("click", ()=>{ $("#azForm button[type=submit]").textContent="Cancel"; openAutoZone(); });
+$("#azGo").addEventListener("click", autoZone);
 function afterZones(){ save(); renderClients(); if(!$("#v-day").hidden) renderDay(); }
 
 const dayLabel = (iso,opt={weekday:"short",day:"numeric",month:"short"}) => new Date(iso+"T00:00:00").toLocaleDateString("en-AU",opt);
