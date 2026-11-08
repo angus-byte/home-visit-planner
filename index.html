@@ -340,8 +340,6 @@ nav.steps button{border-radius:999px}
       <button data-go="home"><span class="n"><svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M1 6 6 1.5 11 6M2.5 5v5.5h7V5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>Home</button>
       <button data-go="clients"><span class="n">1</span>Clients</button>
       <button data-go="week"><span class="n">2</span>Planner</button>
-      <button data-go="schedule"><span class="n">3</span>Schedule</button>
-      <button data-go="month"><span class="n">4</span>Month</button>
     </nav>
   </div>
 </header>
@@ -1273,7 +1271,7 @@ function save(){ stashWeek(); try { localStorage.setItem(STORE, JSON.stringify({
 /* ---------- Navigation ---------- */
 function go(view){
   $$("section.view").forEach(s=>s.hidden = s.id !== "v-"+view);
-  $$("nav.steps button").forEach(b=>b.setAttribute("aria-current", b.dataset.go===view));
+  $$("nav.steps button").forEach(b=>b.setAttribute("aria-current", b.dataset.go===view || (b.dataset.go==="week" && ["schedule","month","day"].includes(view))));
   if(view==="home") renderHome();
   if(view==="clients") renderClients();
   if(view==="week"){ renderCal(); renderWeek(); }
