@@ -256,10 +256,29 @@ details.card summary{cursor:pointer;font-weight:600}
 .cal .cell .cnt{font-size:.78rem;font-weight:700}
 .cal .cell .ok{font-size:.7rem;font-weight:700;color:var(--good)}
 .cal .cell .chip.zone{font-size:.68rem;padding:2px 7px;max-width:100%;overflow:hidden;text-overflow:ellipsis}
-.ddlist{list-style:none;margin:0;padding:0;display:grid;gap:6px;max-height:44vh;overflow-y:auto}
-.ddlist li{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:8px 12px;border:1px solid var(--line);border-radius:10px;font-size:.92rem}
-.ddlist li .rm{width:34px;height:34px;border-radius:50%;border:0;background:none;cursor:pointer;color:var(--muted);font-size:1.2rem}
-.ddlist li .rm:hover{background:var(--bad-soft);color:var(--bad)}
+#dlgDay{width:min(940px,calc(100vw - 24px))}
+.ddcols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+.ddpane{display:grid;gap:10px;min-width:0}
+.ddclients{list-style:none;margin:0;padding:4px;display:grid;gap:2px;max-height:46vh;overflow-y:auto;border:1px solid var(--line);border-radius:12px}
+.ddclients li{display:grid;grid-template-columns:22px 1fr auto 26px;gap:8px;align-items:center;padding:7px 8px;border-radius:8px;font-size:.88rem}
+.ddclients li:hover{background:var(--soft)}
+.ddclients li.on{background:var(--accent-soft)}
+.ddclients li .sub{display:block;color:var(--muted);font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ddclients li .pinat{font-size:.75rem;font-weight:700;color:var(--accent);white-space:nowrap}
+.ddclients .grip,.ddslots .grip{border:0;background:none;cursor:grab;touch-action:none;color:var(--muted);padding:4px;border-radius:6px;display:grid;place-items:center}
+.ddclients .grip:hover{background:var(--soft-2)}
+.ddslots{list-style:none;margin:0;padding:0;display:grid;gap:4px;max-height:46vh;overflow-y:auto}
+.ddslots li{display:grid;grid-template-columns:62px 1fr;gap:8px;align-items:center;font-size:.88rem}
+.ddslots .t{font-weight:700;font-variant-numeric:tabular-nums;color:var(--muted);text-align:right}
+.ddslots .drop{min-height:38px;border:1.5px dashed var(--line-strong);border-radius:10px;padding:4px 8px;display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.8rem;transition:background .12s,border-color .12s}
+.ddslots .drop.hot{background:var(--accent-soft);border-color:var(--accent);border-style:solid}
+.ddslots .drop.full{border-style:solid;border-color:var(--accent);background:#fff;color:var(--ink)}
+.ddslots .drop .x{margin-left:auto;border:0;background:none;cursor:pointer;color:var(--muted);font-size:1.1rem;width:28px;height:28px;border-radius:50%}
+.ddslots .drop .x:hover{background:var(--bad-soft);color:var(--bad)}
+.ddroute{list-style:none;margin:0;padding:10px 12px;border-radius:12px;background:var(--good-soft);display:grid;gap:4px;font-size:.88rem}
+.ddroute .t{display:inline-block;min-width:62px;font-weight:700;font-variant-numeric:tabular-nums}
+.ddghost{position:fixed;z-index:2000;pointer-events:none;background:var(--accent);color:#fff;font-weight:600;font-size:.85rem;padding:6px 12px;border-radius:999px;box-shadow:0 8px 24px rgba(15,31,38,.3);transform:translate(-50%,-120%)}
+@media (max-width:720px){ .ddcols{grid-template-columns:1fr} .ddclients,.ddslots{max-height:34vh} }
 @media (max-width:640px){ .cal{gap:3px} .cal .cell{min-height:64px;padding:4px;border-radius:8px} .cal .cell .ppl,.cal .cell .ok{display:none} .cal .cell .chip.zone{font-size:0;padding:0;width:10px;height:10px} .cal .cell .chip.zone i{width:10px;height:10px} .cal .cell .n{width:22px;height:22px;font-size:.8rem} .cal .cell .cnt{font-size:.7rem} .calnav{flex-wrap:nowrap!important} #calMonths{flex-wrap:nowrap!important;overflow-x:auto;flex:1;min-width:0;scrollbar-width:none} #calMonths .chipbtn{flex:none} }
 @media (max-width:640px){
   .drow{grid-template-columns:28px 64px minmax(0,1fr);padding:10px}
@@ -615,17 +634,26 @@ nav.steps button{border-radius:999px}
 </dialog>
 
 <dialog id="dlgDay">
-  <form method="dialog" id="ddForm" style="display:grid;gap:14px;min-width:min(520px,88vw)">
+  <form method="dialog" id="ddForm" class="ddform">
     <div class="row spread"><h2 style="font-size:1.25rem" id="ddTitle">Day</h2><span class="muted small" id="ddSum"></span></div>
-    <label class="f">Zone<select id="ddZone"></select></label>
-    <div class="ac-wrap">
-      <input type="search" id="ddAdd" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="ddAddList" placeholder="Add a client: choose, or start typing a name" autocomplete="off">
-      <ul class="ac-list" id="ddAddList" role="listbox" hidden></ul>
+    <div class="ddcols">
+      <div class="ddpane">
+        <label class="f">1. Zone<select id="ddZone"></select></label>
+        <div class="row spread small"><b>2. Tick who you're seeing</b><label class="row" style="gap:6px;flex-wrap:nowrap"><input type="checkbox" id="ddAll"> All zones</label></div>
+        <input type="search" id="ddSearch" placeholder="Search name or suburb" aria-label="Search clients">
+        <ul id="ddClients" class="ddclients"></ul>
+        <p class="muted small" style="margin:0">Drag a client onto a time to fix them there.</p>
+      </div>
+      <div class="ddpane">
+        <div class="row spread small"><b>3. Fixed times</b><span class="muted" id="ddFree"></span></div>
+        <ol id="ddSlots" class="ddslots"></ol>
+        <div id="ddRoute"></div>
+      </div>
     </div>
-    <ol id="ddList" class="ddlist"></ol>
+    <div id="ddMsg" class="banner info" hidden></div>
     <div class="row spread">
       <button type="button" class="btn link danger" id="ddClear">Clear day</button>
-      <div class="row"><button type="submit" class="btn">Done</button><button type="button" class="btn primary" id="ddOpen">Plan route &amp; times</button></div>
+      <div class="row"><button type="button" class="btn" id="ddOpen">Open in Plan a day</button><button type="button" class="btn primary" id="ddGo">Find most efficient route</button><button type="submit" class="btn">Done</button></div>
     </div>
   </form>
 </dialog>
@@ -2393,52 +2421,89 @@ function renderCal(){
 $("#calMonths").addEventListener("click", e=>{ const b=e.target.closest("[data-cm]"); if(!b) return; S.calMonth=b.dataset.cm; save(); renderCal(); });
 $("#calPrev").addEventListener("click", ()=>{ S.calMonth=monthAdd(calMonth(),-1); save(); renderCal(); });
 $("#calNext").addEventListener("click", ()=>{ S.calMonth=monthAdd(calMonth(),1); save(); renderCal(); });
-// Day pop-up
-let ddDate=null, ddItems=[], ddActive=-1;
-function openDayDlg(date){ ddDate=date; renderDayDlg(); $("#ddAdd").value=""; $("#ddAddList").hidden=true; $("#dlgDay").showModal(); }
+// Day pop-up: pick the zone, tick clients (filtered to the zone), drag clients onto time slots to fix them, then find the best route.
+let ddDate=null, ddBusy=false;
+function openDayDlg(date){ ddDate=date; $("#ddSearch").value=""; $("#ddAll").checked=false; $("#ddMsg").hidden=true; renderDayDlg(); $("#dlgDay").showModal(); }
+function ddSlotTimes(p){
+  const cfg=dayCfg(), step=Math.max(5,(+cfg.apptMin||30)+(+cfg.packMin||0)), out=new Set();
+  for(let m=toMin(cfg.first); m+(+cfg.apptMin||30)<=toMin(cfg.end); m+=step) out.add(hhmm(m*60));
+  Object.values(p.pins).forEach(t=>out.add(t));
+  return [...out].sort();
+}
+function ddChanged(p){ if(p.result) p.stale=true; save(); renderDayDlg(); renderCal(); }
 function renderDayDlg(){
-  const p=dayPlan(ddDate);
+  const p=dayPlan(ddDate), r=p.result&&!p.stale?p.result:null;
   $("#ddTitle").textContent=dayLabel(ddDate,{weekday:"long",day:"numeric",month:"long",year:"numeric"});
-  $("#ddZone").innerHTML=`<option value="">No zone</option>`+zonesOf().map(z=>`<option${z===p.zone?" selected":""}>${esc(z)}</option>`).join("")+`<option value="__add">+ Add a zone…</option>`;
-  $("#ddSum").textContent=p.ids.length?`${p.ids.length} visit${p.ids.length===1?"":"s"}`:"";
-  $("#ddList").innerHTML=p.ids.length? p.ids.map(id=>{ const c=client(id), s=p.result&&!p.stale&&p.result.stops[id];
-      return `<li><span>${s?`<b style="font-variant-numeric:tabular-nums">${fmtTime(s.start/60)}</b> · `:""}<b>${esc(c.name)}</b>${c.zone?" "+zoneChip(c.zone):""}<span class="muted small" style="display:block">${esc(c.address)}</span></span>
-        <button type="button" class="rm" data-ddrm="${id}" aria-label="Remove ${esc(c.name)}" title="Remove from this day">×</button></li>`; }).join("")
-    : `<li class="muted" style="border-style:dashed">Nobody booked yet. Add clients above.</li>`;
-  $("#ddOpen").disabled=!p.ids.length; $("#ddClear").hidden=!p.ids.length && !p.zone;
+  $("#ddZone").innerHTML=`<option value="">Any zone</option>`+zonesOf().map(z=>`<option${z===p.zone?" selected":""}>${esc(z)}</option>`).join("")+`<option value="__add">+ Add a zone…</option>`;
+  $("#ddSum").textContent=p.ids.length?`${p.ids.length} visit${p.ids.length===1?"":"s"}`:"No visits yet";
+  // Clients: the day's zone (unless "All zones"), plus anyone already on the day
+  const q=$("#ddSearch").value.trim().toLowerCase(), all=$("#ddAll").checked||!p.zone;
+  const list=S.clients.filter(c=>(all || c.zone===p.zone || p.ids.includes(c.id)) && (!q || [c.name,c.address].join(" ").toLowerCase().includes(q)))
+    .sort((a,b)=>(p.ids.includes(b.id)-p.ids.includes(a.id)) || a.name.localeCompare(b.name));
+  $("#ddClients").innerHTML=list.length? list.map(c=>{ const on=p.ids.includes(c.id), pin=p.pins[c.id];
+    return `<li class="${on?"on":""}"><input type="checkbox" data-ddon="${c.id}" ${on?"checked":""} aria-label="See ${esc(c.name)} on this day">
+      <span style="min-width:0"><b>${esc(c.name)}</b>${all&&c.zone?" "+zoneChip(c.zone):""}<span class="sub">${esc(c.address)}</span></span>
+      <span class="pinat">${pin?"📌 "+fmtTime(toMin(pin)):""}</span>
+      <button type="button" class="grip" data-drag="${c.id}" aria-label="Drag ${esc(c.name)} to a time">${GRIP}</button></li>`; }).join("")
+    : `<li class="muted" style="display:block">${p.zone&&!$("#ddAll").checked?`No clients in ${esc(p.zone)} yet. Tick "All zones", or set zones in the client list.`:"No clients match."}</li>`;
+  // Slots
+  const byTime={}; Object.entries(p.pins).forEach(([id,t])=>{ if(p.ids.includes(id)) (byTime[t] ||= []).push(id); });
+  $("#ddSlots").innerHTML=ddSlotTimes(p).map(t=>{ const ids=byTime[t]||[];
+    return `<li><span class="t">${fmtTime(toMin(t))}</span><div class="drop${ids.length?" full":""}" data-slot="${t}">${ids.length? ids.map(id=>`<button type="button" class="grip" data-drag="${id}" aria-label="Move ${esc(client(id).name)}">${GRIP}</button><b>${esc(client(id).name)}</b><button type="button" class="x" data-unpin="${id}" aria-label="Unfix ${esc(client(id).name)}" title="Unfix time">×</button>`).join("") : "Drop a client here"}</div></li>`; }).join("");
+  const free=p.ids.filter(id=>!p.pins[id]).length;
+  $("#ddFree").textContent=p.ids.length?`${free} to fit in around ${Object.keys(byTime).length?"them":"the day"}`:"";
+  // Route
+  $("#ddRoute").innerHTML = r && p.ids.length ? `<ol class="ddroute"><li class="muted"><span class="t">${fmtTime(r.leave/60)}</span>Leave ${esc(r.base)}</li>${p.ids.map(id=>{ const s=r.stops[id]; return s?`<li${s.late?' style="color:var(--bad)"':""}><span class="t">${fmtTime(s.start/60)}</span><b>${esc(client(id).name)}</b>${p.pins[id]?" 📌":""}${s.late?" (can't make fixed time)":""}</li>`:""; }).join("")}${r.ret?`<li class="muted"><span class="t">${fmtTime(r.back/60)}</span>Home · ${fmtDur(r.drive)} driving, ${Math.round(r.dist/1000)} km</li>`:""}</ol>`
+    : (p.result&&p.stale&&p.ids.length ? `<p class="muted small" style="margin:0">Changed since the last route. Press Find most efficient route to update it.</p>` : "");
+  $("#ddGo").disabled=!p.ids.length||ddBusy; $("#ddOpen").disabled=!p.ids.length; $("#ddClear").hidden=!p.ids.length && !p.zone;
+  $("#ddGo").textContent=ddBusy?"Finding route…":"Find most efficient route";
 }
-function ddRender(){
-  const q=$("#ddAdd").value.trim().toLowerCase(), p=dayPlan(ddDate), list=$("#ddAddList"), words=q?q.split(/\s+/):[];
-  ddItems=S.clients.filter(c=>!p.ids.includes(c.id) && words.every(w=>[c.name,c.address,c.zone].join(" ").toLowerCase().includes(w)))
-    .sort((a,b)=>(q?(b.name.toLowerCase().startsWith(q))-(a.name.toLowerCase().startsWith(q)):0) || ((b.zone||"")===p.zone)-((a.zone||"")===p.zone) || a.name.localeCompare(b.name)).slice(0,q?8:200);
-  if(q && ddActive<0 && ddItems.length) ddActive=0;
-  list.innerHTML=ddItems.length? ddItems.map((c,i)=>`<li role="option" data-i="${i}" aria-selected="${i===ddActive}"><b>${esc(c.name)}</b>${c.zone?" "+zoneChip(c.zone):""}<small style="color:var(--muted);font-weight:400;white-space:normal;text-align:right">${esc(c.address)}</small></li>`).join("")
-    : `<li class="note">${q?"No match in your client list.":"Everyone in your client list is already on this day."}</li>`;
-  list.hidden=false; $("#ddAdd").setAttribute("aria-expanded","true");
-  const a=list.querySelector('[aria-selected="true"]'); if(a) a.scrollIntoView({block:"nearest"});
-}
-function ddPick(i){ const c=ddItems[i]; if(!c) return; const p=dayPlan(ddDate); addToDay(ddDate,c.id); if(!p.zone && c.zone) p.zone=c.zone; save(); $("#ddAdd").value=""; ddActive=-1; renderDayDlg(); renderCal(); $("#ddAdd").focus(); ddRender(); }
-$("#ddAdd").addEventListener("input", ()=>{ ddActive=-1; ddRender(); });
-$("#ddAdd").addEventListener("focus", ()=>{ ddActive=-1; ddRender(); });
-$("#ddAdd").addEventListener("click", ()=>{ if($("#ddAddList").hidden){ ddActive=-1; ddRender(); } });
-$("#ddAdd").addEventListener("keydown", e=>{
-  const n=ddItems.length;
-  if(e.key==="ArrowDown"||e.key==="ArrowUp"){ e.preventDefault(); if(!n) return; const dn=e.key==="ArrowDown"; ddActive=ddActive<0?(dn?0:n-1):(ddActive+(dn?1:n-1))%n; ddRender(); }
-  else if(e.key==="Enter"){ e.preventDefault(); if(n) ddPick(ddActive<0?0:ddActive); }
-  else if(e.key==="Tab" && !$("#ddAddList").hidden && $("#ddAdd").value.trim() && ddItems[ddActive]){ e.preventDefault(); ddPick(ddActive); }
-  else if(e.key==="Escape" && !$("#ddAddList").hidden){ e.preventDefault(); $("#ddAddList").hidden=true; }
+$("#ddSearch").addEventListener("input", renderDayDlg);
+$("#ddAll").addEventListener("change", renderDayDlg);
+$("#ddClients").addEventListener("change", e=>{ const id=e.target.dataset.ddon; if(!id) return; const p=dayPlan(ddDate);
+  if(e.target.checked){ addToDay(ddDate,id); const c=client(id); if(!p.zone && c.zone) p.zone=c.zone; }
+  else { p.ids=p.ids.filter(x=>x!==id); delete p.pins[id]; delete p.booked[id]; if(!p.ids.length) p.result=null; }
+  ddChanged(p); });
+$("#ddSlots").addEventListener("click", e=>{ const b=e.target.closest("[data-unpin]"); if(!b) return; const p=dayPlan(ddDate); delete p.pins[b.dataset.unpin]; ddChanged(p); });
+// Drag a client (from the list or another slot) onto a time slot
+let ddDrag=null;
+$("#ddForm").addEventListener("pointerdown", e=>{
+  const g=e.target.closest("[data-drag]"); if(!g) return; e.preventDefault(); g.setPointerCapture(e.pointerId);
+  const ghost=document.createElement("div"); ghost.className="ddghost"; ghost.textContent=client(g.dataset.drag).name; $("#dlgDay").appendChild(ghost);
+  ddDrag={id:g.dataset.drag, ghost, hot:null}; ddMove(e);
 });
-$("#ddAddList").addEventListener("pointerdown", e=>{ const li=e.target.closest("[data-i]"); if(li){ e.preventDefault(); ddPick(+li.dataset.i); } });
-$("#ddAdd").addEventListener("blur", ()=>setTimeout(()=>{ $("#ddAddList").hidden=true; $("#ddAdd").setAttribute("aria-expanded","false"); },150));
-$("#ddList").addEventListener("click", e=>{ const b=e.target.closest("[data-ddrm]"); if(!b) return; const p=dayPlan(ddDate), id=b.dataset.ddrm;
-  p.ids=p.ids.filter(x=>x!==id); delete p.pins[id]; delete p.booked[id]; if(p.result) p.stale=true; if(!p.ids.length) p.result=null; save(); renderDayDlg(); renderCal(); });
+function ddMove(e){
+  if(!ddDrag) return; ddDrag.ghost.style.left=e.clientX+"px"; ddDrag.ghost.style.top=e.clientY+"px";
+  ddDrag.ghost.hidden=true; const el=document.elementFromPoint(e.clientX,e.clientY); ddDrag.ghost.hidden=false;
+  const slot=el&&el.closest("[data-slot]"); if(ddDrag.hot&&ddDrag.hot!==slot) ddDrag.hot.classList.remove("hot"); if(slot) slot.classList.add("hot"); ddDrag.hot=slot;
+  const box=$("#ddSlots"), b=box.getBoundingClientRect(); if(e.clientY<b.top+30) box.scrollTop-=12; else if(e.clientY>b.bottom-30) box.scrollTop+=12;
+}
+$("#ddForm").addEventListener("pointermove", ddMove);
+function ddDrop(cancel){
+  if(!ddDrag) return; const {id,hot,ghost}=ddDrag; ghost.remove(); ddDrag=null;
+  if(cancel||!hot) return; hot.classList.remove("hot");
+  const p=dayPlan(ddDate); addToDay(ddDate,id); const c=client(id); if(!p.zone && c.zone) p.zone=c.zone;
+  p.pins[id]=hot.dataset.slot; ddChanged(p);
+}
+$("#ddForm").addEventListener("pointerup", ()=>ddDrop(false));
+$("#ddForm").addEventListener("pointercancel", ()=>ddDrop(true));
 $("#ddZone").addEventListener("change", e=>{ const p=dayPlan(ddDate);
   if(e.target.value==="__add"){ e.target.value=p.zone||""; openZones(null); $("#dlgZone").addEventListener("close", ()=>{ if($("#dlgDay").open) renderDayDlg(); }, {once:true}); return; }
-  p.zone=e.target.value; save(); renderDayDlg(); renderCal(); });
+  p.zone=e.target.value; $("#ddAll").checked=false; save(); renderDayDlg(); renderCal(); });
 $("#ddClear").addEventListener("click", e=>{ const b=e.currentTarget; if(!b.dataset.sure){ b.dataset.sure="1"; b.textContent="Tap again to clear"; setTimeout(()=>{ delete b.dataset.sure; b.textContent="Clear day"; },3000); return; }
   delete b.dataset.sure; b.textContent="Clear day"; delete S.dayPlans[ddDate]; save(); renderDayDlg(); renderCal(); });
 $("#ddOpen").addEventListener("click", ()=>{ S.dayDate=ddDate; save(); $("#dlgDay").close(); go("day"); });
-$("#dlgDay").addEventListener("close", ()=>{ Object.keys(S.dayPlans).forEach(d=>{ const q=S.dayPlans[d]; if(!q.ids.length && !q.zone) delete S.dayPlans[d]; }); save(); if(!$("#v-week").hidden) renderCal(); });
+$("#ddGo").addEventListener("click", async ()=>{
+  const p=dayPlan(ddDate); if(!p.ids.length||ddBusy) return;
+  ddBusy=true; $("#ddMsg").hidden=true; renderDayDlg();
+  S.dayDate=ddDate; dayMsg("");
+  try{ await computeDay("optimise"); } finally { ddBusy=false; }
+  const m=$("#dMsg"); if(!m.hidden && m.classList.contains("bad")){ $("#ddMsg").className="banner bad"; $("#ddMsg").innerHTML=m.innerHTML; $("#ddMsg").hidden=false; }
+  else if(p.result && !p.stale){ const late=p.ids.filter(id=>p.result.stops[id]&&p.result.stops[id].late).length;
+    if(late||p.result.over>60){ $("#ddMsg").className="banner warn"; $("#ddMsg").textContent=(late?`${late} fixed time${late===1?"":"s"} can't be reached. `:"")+(p.result.over>60?`The day runs past your finish time by ${fmtDur(p.result.over)}.`:""); $("#ddMsg").hidden=false; } }
+  renderDayDlg(); renderCal();
+});
+$("#dlgDay").addEventListener("close", ()=>{ ddDrop(true); Object.keys(S.dayPlans).forEach(d=>{ const q=S.dayPlans[d]; if(!q.ids.length && !q.zone) delete S.dayPlans[d]; }); save(); if(!$("#v-week").hidden) renderCal(); });
 $("#cal").addEventListener("click", e=>{ const c=e.target.closest("[data-cday]"); if(c) openDayDlg(c.dataset.cday); });
 
 /* ---------- Boot ---------- */
